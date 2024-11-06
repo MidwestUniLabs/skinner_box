@@ -5,10 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>I/O Testing Page</title>
     <style>
+        
         body {
             display: flex;
             justify-content: space-between;
             padding: 20px;
+            background-color: #121212; /* Dark background */
+            color: #E0E0E0; /* Light text */
+            font-family: 'Arial', sans-serif;
         }
         #left-section, #right-section {
             width: 45%;
@@ -46,6 +50,15 @@
             padding: 10px;
             text-align: center;
             font-weight: bold;
+        }
+        .button {
+            background-color: #3700B3; /* Deep purple */
+            color: #FFFFFF;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
     </style>
 </head>
@@ -111,19 +124,19 @@
     <form action="/test_io" method="post">
         
         <h3>Test Stimulus</h3>
-        <button type="submit" name="action" value="sound">Sound</button>
-        <button type="submit" name="action" value="light">Light</button>
+        <button type="submit" name="action" value="sound" class="button">Sound</button>
+        <button type="submit" name="action" value="light" class="button">Light</button>
         <br>
 
         <h3>Test Input</h3>
-        <button type="submit" name="action" value="lever_press">Lever Press</button>
-        <button type="submit" name="action" value="nose_poke">Nose Poke</button>
+        <button type="submit" name="action" value="lever_press" class="button">Lever Press</button>
+        <button type="submit" name="action" value="nose_poke" class="button">Nose Poke</button>
         <br>
 
         <h3>Test Output</h3>
-        <button type="submit" name="action" value="feed">Feed</button>
-        <button type="submit" name="action" value="water">Water</button>
-    </form> 
+        <button type="submit" name="action" value="feed" class="button">Feed</button>
+        <button type="submit" name="action" value="water" class="button">Water</button>
+    </form>
 </div>
 
 </body>

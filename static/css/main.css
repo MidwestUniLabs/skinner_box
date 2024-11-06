@@ -85,7 +85,7 @@ body {
     /* Footer */
     footer {
         background-color: #1E1E1E; /* Slightly lighter than body for contrast */
-        color: #E0E0E0;
+        color: #e0e0e0;
         text-align: center;
         padding: 20px;
         position: relative;
@@ -114,7 +114,7 @@ body {
         margin-bottom: 5px;
         cursor: pointer;
         text-decoration: none; /* added for better visual clarity */
-        color: #000; /* added to ensure text is clearly visible */
+        color: #e0e0e0; /* added to ensure text is clearly visible */
     }
     #log-list a:hover {
         background-color: #BB86FC; /* added for interactive feedback */

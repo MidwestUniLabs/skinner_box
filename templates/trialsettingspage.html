@@ -1,52 +1,139 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trial Settings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #E0E0E0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #1E1E1E;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #FFFFFF;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .form-row label {
+            text-align: right;
+            padding-right: 10px;
+        }
+        .form-row input[type="number"],
+        .form-row input[type="color"],
+        .form-row select {
+            width: 100%;
+            padding: 8px;
+            background-color: #333333;
+            color: #E0E0E0;
+            border: 1px solid #555555;
+            border-radius: 4px;
+        }
+        .form-row input[type="color"] {
+            padding: 0;
+            width: 100%;
+            height: 35px;
+        }
+        .form-row input:focus {
+            outline: none;
+            border-color: #6200EE;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: #FFFFFF;
+            background-color: #3700B3;
+        }
+        .button:hover {
+            background-color: #6200EE;
+        }
+    </style>
+</head>
+<body>
 
-{% block head %}
-<title>Trial Settings</title>
-{% endblock %}
-
-{% block body %}
-
-<div class="container ">
+<div class="container">
     <h1>Trial Settings</h1>
-    <form action="{{ url_for('update_trial_settings') }}" method="post">
-        <div class="form-group">
+    <form action="/update_trial_settings" method="post">
+        <div class="form-row">
             <label for="duration">Trial Duration (minutes)</label>
-            <input type="number" class="form-control" id="duration" name="duration" value="{{ settings.get('duration', '') }}" required>
+            <input type="number" id="duration" name="duration" value="1" required>
         </div>
-        <div class="form-group">
+        <div class="form-row">
             <label for="goal">Goal For Trial (goal)</label>
-            <input type="number" class="form-control" id="goal" name="goal" value="{{ settings.get('goal', '') }}" required>
+            <input type="number" id="goal" name="goal" value="4" required>
         </div>
-        <div class="form-group">
-            <label for="goal">Cooldown Between Interactions (seconds)</label>
-            <input type="number" class="form-control" id="cooldown" name="cooldown" value="{{ settings.get('cooldown', '') }}" required>
+        <div class="form-row">
+            <label for="cooldown">Cooldown Between Interactions (seconds)</label>
+            <input type="number" id="cooldown" name="cooldown" value="1" required>
         </div>
-        <!--Booleans-->
-        <div class="form-group">
-            <label for="rewardType">Reward Type.</label>
-            <label><input type="radio" name="rewardType" value="water" {{ 'checked' if settings.get('rewardType', '') == 'water' else '' }} required>Water</label>
-            <label><input type="radio" name="rewardType" value="food" {{ 'checked' if settings.get('rewardType', '') == 'food' else '' }} required>Food</label>
+
+        <div class="form-row">
+            <label>Reward Type</label>
+            <div class="radio-group">
+                <label><input type="radio" name="rewardType" value="water" required> Water</label>
+                <label><input type="radio" name="rewardType" value="food" required checked> Food</label>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="interactionType">Interaction Type.</label>
-            <label><input type="radio" name="interactionType" value="lever" {{ 'checked' if settings.get('interactionType', '') == 'lever' else '' }} required>Lever</label>
-            <label><input type="radio" name="interactionType" value="poke" {{ 'checked' if settings.get('interactionType', '') == 'poke' else '' }} required>Poke</label>
+
+        <div class="form-row">
+            <label>Interaction Type</label>
+            <div class="radio-group">
+                <label><input type="radio" name="interactionType" value="lever" required checked> Lever</label>
+                <label><input type="radio" name="interactionType" value="poke" required> Poke</label>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="stimulusType">Stimulus Type.</label>
-            <label><input type="radio" name="stimulusType" value="light" {{ 'checked' if settings.get('stimulusType', '') == 'light' else '' }} required>Light</label>        
-            <label><input type="radio" name="stimulusType" value="tone" {{ 'checked' if settings.get('stimulusType', '') == 'tone' else '' }} required>Tone</label>
+
+        <div class="form-row">
+            <label>Stimulus Type</label>
+            <div class="radio-group">
+                <label><input type="radio" name="stimulusType" value="light" required checked> Light</label>
+                <label><input type="radio" name="stimulusType" value="tone" required> Tone</label>
+            </div>
         </div>
-        <div class="form-group">
-            <label for"light-color">Light Color.</label>
-            <input type="color" name="light-color" value="{{ settings.get('light-color', '') }}">
+
+        <div class="form-row">
+            <label for="light-color">Light Color</label>
+            <input type="color" id="light-color" name="light-color" value="#8b4513">
         </div>
-        <!-- Additional settings inputs can be added here -->
-        <button type="submit" class="btn btn-primary">Save Settings</button>
+
+        <button type="submit" class="button">Save Settings</button>
     </form>
+
     <form action="/start" method="post">
-        <button type="submit" value="start-trial">Start Trial</button>
+        <button type="submit" class="button">Start Trial</button>
     </form>
 </div>
 
-{% endblock %}
+</body>
+</html>

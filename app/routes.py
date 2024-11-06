@@ -5,7 +5,7 @@ from flask import render_template, request, jsonify, redirect, send_file, send_f
 from app import app, config, gpio
 from app.database import get_db_connection
 from app.trial_state_machine import TrialStateMachine
-from skinnerBox import list_log_files, load_settings, save_settings
+from skinnerBox import list_log_files_sorted, load_settings, save_settings
 from werkzeug.utils import secure_filename, safe_join
 from openpyxl import Workbook
 from app import gpio
@@ -152,7 +152,7 @@ def trial_status(): # Returns the current status of the trial
 
 @app.route('/log-viewer', methods=['GET', 'POST'])
 def log_viewer(): # Displays the log files in the log directory
-    log_files = list_log_files()  # Assume this function returns the list of log file names.
+    log_files = list_log_files_sorted(log_directory)  # Get sorted list of log files
     return render_template('logpage.html', log_files=log_files)
 
 @app.route('/download-raw-log/<filename>')

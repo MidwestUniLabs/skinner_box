@@ -1,4 +1,5 @@
 # skinnerBox.py
+from datetime import datetime
 import json
 from app import app
 from app import config
@@ -17,8 +18,12 @@ except:
 if not os.path.exists(log_directory):
     os.makedirs(log_directory)
 
-def list_log_files(_log_directory=log_directory):
-    return [f for f in os.listdir(_log_directory) if os.path.isfile(os.path.join(_log_directory, f))]
+def list_log_files_sorted(log_directory):
+    files = [f for f in os.listdir(log_directory) if os.path.isfile(os.path.join(log_directory, f)) and f.startswith("trial_log_")]
+    # Sort the files by date in descending order
+    files.sort(key=lambda x: datetime.strptime(x, "trial_log_%m_%d_%y_%H_%M_%S.csv"), reverse=True)
+    return files
+
 #Settings and File Management
 def load_settings():
     try:

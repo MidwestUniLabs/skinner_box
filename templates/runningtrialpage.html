@@ -7,7 +7,7 @@
         if(document.hidden) return; // Don't fetch if the page is hidden (e.g. in another tab
 		fetch('/trial-status')
 		.then(response => response.json())
-		.then(data => {
+        .then(data => {
 		    document.getElementById('timeRemaining').textContent = data.timeRemaining;
 		    document.getElementById('currentIteration').textContent = data.currentIteration;
 		})
@@ -41,7 +41,7 @@
         <p>Current Iteration: <span id="currentIteration">0</span></p>
     </div>
     <form action="/stop" method="post">
-        <button type="submit" value="end-trial">Manually End Trial</button>
+        <button type="submit" value="end-trial" class="button">Manually End Trial</button>
     </form>
 </div>
 
