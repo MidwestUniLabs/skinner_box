@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename, safe_join
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-settings_path = 'config.json'
+settings_path = 'trial_config.json'
 log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
 temp_directory = '/home/jacob/Downloads/skinner_box-main/temp/'
 
@@ -442,7 +442,7 @@ class TrialStateMachine:
     def load_settings(self):
         # Implementation of loading settings from file
         try:
-            with open('config.json', 'r') as file:
+            with open('trial_config.json', 'r') as file:
                 self.settings = json.load(file)
         except FileNotFoundError:
             self.settings = {}

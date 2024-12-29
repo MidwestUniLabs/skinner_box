@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+<head>
 <title>Log Viewer</title>
-{% block head %}
-{% endblock %}
-
-{% block body %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
 <script>
     function viewLog(filename) {
@@ -28,7 +28,6 @@
                 document.getElementById('log-viewer').textContent = 'Error loading log content.';
             });
     }
-
 </script>
 
 </head>
@@ -47,6 +46,5 @@
     </div>
     <a id="download-btn" href="" download>Download Raw Log</a>
     <a id="download-excel-btn" href="" download>Download Excel Log</a>
-    </body>
+</body>
 </html>
-{% endblock %}

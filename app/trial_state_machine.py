@@ -67,7 +67,7 @@ class TrialStateMachine:
     def load_settings(self):
         # Implementation of loading settings from file
         try:
-            with open('config.json', 'r') as file:
+            with open('trial_config.json', 'r') as file:
                 self.settings = json.load(file)
         except FileNotFoundError:
             self.settings = {}

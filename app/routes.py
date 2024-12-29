@@ -2,55 +2,71 @@
 import csv
 import os
 from flask import render_template, request, jsonify, redirect, send_file, send_from_directory, url_for
+import requests
 from app import app, config, gpio
-from app.database import get_db_connection
 from app.trial_state_machine import TrialStateMachine
-from skinnerBox import list_log_files_sorted, load_settings, save_settings
+from main import list_log_files_sorted, load_settings, save_settings
 from werkzeug.utils import secure_filename, safe_join
 from openpyxl import Workbook
 from app import gpio
+import json
 
 settings_path = config.settings_path
 log_directory = config.log_directory
 temp_directory = config.temp_directory
 trial_state_machine = TrialStateMachine()
 
-@app.route('/push_data', methods=['POST'])
-def push_data():
-    data = request.json
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute("""
-            INSERT INTO your_table (column1, column2)
-            VALUES (%s, %s)
-        """, (data['column1'], data['column2']))
-        conn.commit()
-        return jsonify({"status": "success"}), 200
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+# Cloud Run URL
+CLOUD_RUN_URL = os.getenv('CLOUD_RUN_URL')
+TOKEN_FILE = "auth_token.json"
 
-@app.route('/pull_data', methods=['GET'])
-def pull_data(table, condition):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute("SELECT * FROM {table} WHERE {condition}")
-        rows = cur.fetchall()
-        return jsonify(rows), 200
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+#region Helpers
+def save_token(data):
+    """
+    Save the token to a file for persistence.
+    """
+    with open(TOKEN_FILE, "w") as file:
+        json.dump(data, file)
 
+def load_uname():
+    """
+    Load the token from the file if it exists.
+    """
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "r") as file:
+            return json.load(file.username)
+    return None
+
+def load_email():
+    """
+    Load the token from the file if it exists.
+    """
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "r") as file:
+            return json.load(file.email)
+    return None
+
+def load_token():
+    """
+    Load the token from the file if it exists.
+    """
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "r") as file:
+            return json.load(file)
+    return None
+
+def delete_token():
+    """
+    Delete the token file to log out the user.
+    """
+    if os.path.exists(TOKEN_FILE):
+        os.remove(TOKEN_FILE)
+#endregion
+
+#region Routes
 @app.route('/')
 def homepage():
-	return render_template('homepage.html')
+    return render_template('homepage.html')
 
 @app.route('/testingpage')
 def io_testing():
@@ -58,49 +74,42 @@ def io_testing():
 
 @app.route('/test_io', methods=['POST'])
 def test_io():
-	action = request.form.get('action')
-	print(f"Button clicked: {action}")
-	#TODO Add code to handle each action.
-	if action == 'feed':
-		gpio.feed()
-	if action == 'water':
-		gpio.water()
-	if action == 'light':
-		gpio.flashLightStim((255, 255, 255)) #TODO Change to settings color
-	if action == 'sound':
-		gpio.play_sound(1)
-	if action == 'lever_press':
-		gpio.lever_press()
+    action = request.form.get('action')
+    print(f"Button clicked: {action}")
+    #TODO Add code to handle each action.
+    if action == 'feed':
+        gpio.feed()
+    if action == 'water':
+        gpio.water()
+    if action == 'light':
+        gpio.flashLightStim((255, 255, 255)) #TODO Change to settings color
+    if action == 'sound':
+        gpio.play_sound(1)
+    if action == 'lever_press':
+        gpio.lever_press()
         #TODO Put log interaction - manual
-	if action == 'nose_poke':
-		gpio.nose_poke()
+    if action == 'nose_poke':
+        gpio.nose_poke()
         #TODO Put log interaction - manual
 
-	return redirect(url_for('io_testing'))
+    return redirect(url_for('io_testing'))
 
 @app.route("/pin_status")
 def pin_status():
     # Collect the statuses of your GPIO components
-    statuses = {
-        "LEDs": gpio.strip.is_active() if gpio.strip else False,
-        "Lever": gpio.lever.status if gpio.lever else False,
-        "Water Pump": gpio.water_motor.status if gpio.water_motor else False,
-        "Feeder": gpio.feeder_motor.status if gpio.feeder_motor else False,
-        "Buzzer": gpio.buzzer.status if gpio.buzzer else False,
-        "Nose Poke": gpio.poke.status if gpio.poke else False,
-    }
+    statuses = gpio.gpio_states
     # Return the statuses as a JSON response
     return jsonify(statuses)
 
 @app.route('/trial', methods=['POST'])
 def trial():
-	settings = load_settings()  # Load settings
-	if(trial_state_machine.state == 'running'):
-		return render_template('runningtrialpage.html', settings=settings) #TODO change to trialpage
-	else:
-		settings = load_settings()  # Load settings
-		# Perform operations based on settings...
-		return render_template('trialsettingspage.html', settings=settings) #TODO change to trialsettings
+    settings = load_settings()  # Load settings
+    if(trial_state_machine.state == 'running'):
+        return render_template('runningtrialpage.html', settings=settings) #TODO change to trialpage
+    else:
+        settings = load_settings()  # Load settings
+        # Perform operations based on settings...
+        return render_template('trialsettingspage.html', settings=settings) #TODO change to trialsettings
 
 @app.route('/start', methods=['POST'])
 def start():
@@ -221,3 +230,117 @@ def view_log(filename): # View the log file in the browser
         return render_template("t_logviewer.html", rows=rows)
     else:
         return "Log file not found.", 404
+
+@app.route('/login_user', methods=['POST'])
+def Login_User():
+    data = request.get_json()
+    username = "test" # TODO
+    email = data.get('email')
+    password = data.get('password')
+    """
+    Log in the user and save the JWT token for future use.
+    """
+    try:
+        response = requests.post(
+            f'{CLOUD_RUN_URL}/login',
+            json={'email': email, 'password': password},
+            headers={'Content-Type': 'application/json'}
+        )
+        response.raise_for_status()
+        token_data = response.json().get("data", {})
+        if "access_token" in token_data:
+            token_data["username"] = username
+            token_data["email"] = email
+            save_token(token_data)  # Save the token to a file
+            print(f"Successfully logged in as {email}")
+            return token_data
+        else:
+            print("Login succeeded, but no token received.")
+            return {"error": "Login succeeded, but no token received."}, 400
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err} - Response: {response.text}")
+        return {"error": str(http_err)}, 400
+    except Exception as e:
+        print(f"Error logging in: {e}")
+        return {"error": str(e)}, 500
+
+@app.route('/current_user', methods=['GET'])
+def current_user():
+    token_data = load_token()
+    if token_data and "access_token" in token_data:
+        return {"current_user": token_data.get("username")}
+    return {"current_user": None}
+#endregion
+
+#region External API Calls
+@app.route('/logout_user', methods=['POST'])
+def logout_user():
+    """
+    Log out the user by deleting their token.
+    """
+    try:
+        delete_token()  # Deletes the auth_token.json file
+        print("User logged out successfully.")
+        return {"message": "User logged out successfully."}, 200
+    except Exception as e:
+        print(f"Error logging out user: {e}")
+        return {"error": "Failed to log out user."}, 500
+
+def Push_Data(data):
+    # Push data to Cloud Run
+    try:
+        response = requests.post(f'{CLOUD_RUN_URL}/data/push', json=data)
+        response.raise_for_status()
+        print(f'Pushing data to Cloud Run: {CLOUD_RUN_URL}')
+        return True
+    except Exception as e:
+        print(f'Error pushing data to Cloud Run: {e}')
+        return False
+
+def Pull_User_Logs(username): #TODO This should only be accessible when the user is logged in and should get the username from that
+    # Pull user logs from Cloud Run
+    try:
+        response = requests.get(f'{CLOUD_RUN_URL}/logs/user', params={'name': username})
+        response.raise_for_status()
+        print(f'Pulling user logs from Cloud Run: {CLOUD_RUN_URL}')
+        return response.json()
+    except Exception as e:
+        print(f'Error pulling user logs from Cloud Run: {e}')
+        return False
+    
+def Pull_User_Data(username) :#TODO This should only be accessible when the user is logged in and should get the username from that
+    # Pull user data from Cloud Run
+    try:
+        response = requests.get(f'{CLOUD_RUN_URL}/users/get', params={'name': username})
+        response.raise_for_status()
+        print(f'Pulling user data from Cloud Run: {CLOUD_RUN_URL}')
+        return response.json()
+    except Exception as e:
+        print(f'Error pulling user data from Cloud Run: {e}')
+        return False
+
+def Get_Protected_Data():
+    """
+    Fetch data from a protected endpoint using the stored JWT token.
+    """
+    token_data = load_token()
+    if not token_data or "access_token" not in token_data:
+        print("No valid token found. Please log in first.")
+        return None
+
+    access_token = token_data["access_token"]
+    try:
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        response = requests.get(f'{CLOUD_RUN_URL}/protected', headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err} - Response: {response.text}")
+        return None
+    except Exception as e:
+        print(f"Error fetching protected data: {e}")
+        return None
+#endregion
