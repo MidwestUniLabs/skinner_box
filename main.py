@@ -14,8 +14,7 @@ except:
 
 
 #region Helper Functions
-# Ensure log path exists
-if not os.path.exists(log_directory):
+if not os.path.exists(log_directory): # Ensures log path exists
     os.makedirs(log_directory)
 
 def list_log_files_sorted(log_directory):

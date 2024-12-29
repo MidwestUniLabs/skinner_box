@@ -1,48 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <title>Trial Is Running</title>
-    <script>
-        function fetchTrialStatus() {
-            if(document.hidden) return; // Don't fetch if the page is hidden (e.g. in another tab)
-            fetch('/trial-status')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('timeRemaining').textContent = data.timeRemaining;
-                document.getElementById('currentIteration').textContent = data.currentIteration;
-            })
-            .catch(error => console.error('Error fetching trial status:', error));
-        }
+{% extends "base.html" %}
 
-        // Fetch trial status every second
-        setInterval(fetchTrialStatus, 100);
-    </script>
-</head>
-<body>
-    <div class="container">
-        <h1>Trial Is Running</h1>
-        <h2>Trial Settings</h2>
-        <form action="{{ url_for('update_trial_settings') }}" method="post">
-            <div class="form-group">
-                <label for="duration">Trial Duration (minutes):</label>
-                <label for="duration">"{{ settings.get('duration', '') }}"</label>
-            </div>
-            <div class="form-group">
-                <label for="interval">Goal for trial (goal):</label>
-                <label for="goal">"{{ settings.get('goal', '') }}"</label>
-            </div>
-        </form>
-        <div>
-            <p>Countdown: <span id="timeRemaining">0</span></p>
-            <p>Current Iteration: <span id="currentIteration">0</span></p>
+{% block content %}
+<div class="container">
+    <h1>Trial Is Running</h1>
+    <h2>Trial Settings</h2>
+    <form action="{{ url_for('update_trial_settings') }}" method="post">
+        <div class="form-group">
+            <label for="duration">Trial Duration (minutes):</label>
+            <label for="duration">"{{ settings.get('duration', '') }}"</label>
         </div>
-        <form action="/stop" method="post"></form>
-            <button type="submit" value="end-trial" class="button">Manually End Trial</button>
-        </form>
+        <div class="form-group">
+            <label for="interval">Goal for trial (goal):</label>
+            <label for="goal">"{{ settings.get('goal', '') }}"</label>
+        </div>
+    </form>
+    <div>
+        <p>Countdown: <span id="timeRemaining">0</span></p>
+        <p>Current Iteration: <span id="currentIteration">0</span></p>
     </div>
-</body>
-</html>
+    <form action="/stop" method="post">
+        <button type="submit" value="end-trial" class="button">Manually End Trial</button>
+    </form>
+</div>
+
+<script>
+    function fetchTrialStatus() {
+        if(document.hidden) return; // Don't fetch if the page is hidden (e.g. in another tab)
+        fetch('/trial-status')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('timeRemaining').textContent = data.timeRemaining;
+            document.getElementById('currentIteration').textContent = data.currentIteration;
+        })
+        .catch(error => console.error('Error fetching trial status:', error));
+    }
+
+    // Fetch trial status every second
+    setInterval(fetchTrialStatus, 100);
+</script>
+{% endblock %}
