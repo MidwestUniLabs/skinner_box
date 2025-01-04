@@ -10,8 +10,26 @@
 
 {% block scripts %}
     <script>
-        function onload() {
-            // Fetch remote log files and populate the log list
+        onload= function() {
+            // Check if user is logged in
+        fetch('/current_user')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                if (!data.current_user) { // If not logged in, hide remote logs
+                    document.getElementById('remote-logs').style.display = 'none';
+                    document.getElementById('remote-log-btn').style.display = 'none';
+                    document.getElementById('local-log-btn').style.display = 'inline-block';
+                    showLocalLogs();
+                } else { // If logged in, show remote logs
+                    document.getElementById('remote-logs').style.display = 'block';
+                    document.getElementById('remote-log-btn').style.display = 'inline-block';
+                    document.getElementById('local-log-btn').style.display = 'inline-block';
+                    document.getElementById('LoginWarning').style.display = 'none';
+                    showRemoteLogs();
+                }
+            })
+            .catch(error => console.error('Error fetching current user:', error));
         }
         function viewLog(filename) {
             // Fetch log content and display in the log viewer
@@ -54,10 +72,10 @@
     <div id="container">
         <div id="log-list">
             <div class="Buttons">
-                <a id="remote-log-btn" href="javascript:showRemoteLogs();" style="width: 25%; display: inline-block; background-color: #3700B3;">Remote</a>
-                <a id="local-log-btn" href="javascript:showLocalLogs();" style="width: 25%; display: inline-block;">Local</a>
+                <a id="remote-log-btn" href="javascript:showRemoteLogs();" style="width: 25%; display: none;">Remote</a>
+                <a id="local-log-btn" href="javascript:showLocalLogs();" style="width: 25%; display: none;">Local</a>
             </div>
-            <div id="remote-logs" style="display: block;">
+            <div id="remote-logs" style="display: none;">
                 <p>WIP</p>
             </div>
             <div id="local-logs" style="display: none;">
@@ -65,6 +83,9 @@
                 {% for log_file in log_files %}
                 <a onclick="viewLog('{{ log_file }}')">{{ log_file }}</a>
                 {% endfor %}
+            </div>
+            <div id="LoginWarning" style="display: none;">
+                <p style="color: #3700B3;">Remote Log Viewer is only available to logged in users.</p>
             </div>
         </div>
         <div id="log-viewer" style="display: block;">

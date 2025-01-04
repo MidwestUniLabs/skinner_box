@@ -2,9 +2,9 @@
 from datetime import datetime
 import json
 from app import app
-from app import config
+from app import app_config
 from app.trial_state_machine import TrialStateMachine
-from app.config import log_directory
+from app.app_config import log_directory
 import os
 try:
     from app.gpio import water_primer, start_trial_button, manual_interaction, start_motor, water
@@ -26,13 +26,13 @@ def list_log_files_sorted(log_directory):
 #Settings and File Management
 def load_settings():
     try:
-        with open(config.settings_path, 'r') as file:
+        with open(app_config.settings_path, 'r') as file:
             settings = json.load(file)
     except FileNotFoundError:
         settings = {}
     return settings
 def save_settings(settings):
-	with open(config.settings_path, 'w') as file:
+	with open(app_config.settings_path, 'w') as file:
 		json.dump(settings, file, indent=4)
 #endregion
 

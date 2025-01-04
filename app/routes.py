@@ -3,7 +3,7 @@ import csv
 import os
 from flask import render_template, request, jsonify, redirect, send_file, send_from_directory, url_for
 import requests
-from app import app, config, gpio
+from app import app, app_config, gpio
 from app.trial_state_machine import TrialStateMachine
 from main import list_log_files_sorted, load_settings, save_settings
 from werkzeug.utils import secure_filename, safe_join
@@ -11,9 +11,9 @@ from openpyxl import Workbook
 from app import gpio
 import json
 
-settings_path = config.settings_path
-log_directory = config.log_directory
-temp_directory = config.temp_directory
+settings_path = app_config.settings_path
+log_directory = app_config.log_directory
+temp_directory = app_config.temp_directory
 trial_state_machine = TrialStateMachine()
 
 # Cloud Run URL

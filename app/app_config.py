@@ -1,4 +1,4 @@
-# app/config.py
+# app/app_config.py
 import os
 
 # Get project folders directory
