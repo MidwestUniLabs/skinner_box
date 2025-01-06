@@ -234,7 +234,6 @@ def view_log(filename): # View the log file in the browser
 @app.route('/login_user', methods=['POST'])
 def Login_User():
     data = request.get_json()
-    username = "test" # TODO
     email = data.get('email')
     password = data.get('password')
     """
@@ -248,9 +247,7 @@ def Login_User():
         )
         response.raise_for_status()
         token_data = response.json().get("data", {})
-        if "access_token" in token_data:
-            token_data["username"] = username
-            token_data["email"] = email
+        if "access_token" in token_data and "username" in token_data:
             save_token(token_data)  # Save the token to a file
             print(f"Successfully logged in as {email}")
             return token_data
