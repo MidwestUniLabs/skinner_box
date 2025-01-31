@@ -12,6 +12,7 @@ except:
     print("Error setting up buttons")
     pass
 
+trial_state_machine = None
 
 #region Helper Functions
 if not os.path.exists(log_directory): # Ensures log path exists

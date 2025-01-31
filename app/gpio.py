@@ -1,5 +1,6 @@
 import time
 import os
+import threading
 
 #TODO Overhaul this file. It's a mess.
 
@@ -33,8 +34,12 @@ class MockDevice:
         print("Mock device off")
         self.status = False
 
+    def is_active(self):
+        return self.status  # Simulates real GPIO behavior
+
     def close(self):
         print("Mock device closed")
+
 
 class MockNeoPixel:
     def is_active(self):
@@ -112,18 +117,24 @@ else:
     strip = MockNeoPixel()
 #endregion
 
+def safe_gpio_call(device, method, *args, **kwargs):
+    """ Safely call a GPIO function to prevent crashes. """
+    try:
+        getattr(device, method)(*args, **kwargs)
+    except Exception as e:
+        print(f"GPIO Error in {method}: {e}")
+
 #region Action Functions
 # Rewards
 def feed():
-    try:
+    def _feed():
         feeder_motor.on()
         gpio_states["feeder"] = True
         time.sleep(1)  # TODO Adjust Feed Time
         feeder_motor.off()
         gpio_states["feeder"] = False
-        feeder_motor.close()
-    finally:
-        return
+
+    threading.Thread(target=_feed).start()
 
 def water():
     try:
@@ -161,65 +172,72 @@ def stop_motor(motor):
 
 # Stims
 def flashLightStim(color, wait_ms=10):
-    """Flash the light stimulus."""
+    """ Flash the light stimulus safely and correctly. """
     try:
-        r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16)  # Convert to RGB
-        if IS_PI: color = Color(r, g, b)
-        else: color = (r, g, b)
-        # Turn lights on
+        r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16)
+        if IS_PI:
+            color = Color(r, g, b)
+        else:
+            color = (r, g, b)
+
         gpio_states["led"] = True
+
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color)
             strip.show()
             time.sleep(wait_ms / 1000.0)
-        # Turn lights off
+
+        # Fully turn off LEDs after delay
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, Color(0, 0, 0))
-            strip.show()
-            time.sleep(wait_ms / 1000.0)
+        strip.show()
+        
         gpio_states["led"] = False
-    except Exception as e:
-        print(f"An error occurred in flashLightStim: {e}")
 
-def play_sound(duration):  # TODO
+    except Exception as e:
+        print(f"Error in flashLightStim: {e}")
+
+
+def play_sound(duration=1):
+    """ Play a sound for the given duration. """
     try:
         print("Playing sound")
         gpio_states["speaker"] = True
-        time.sleep(duration)  # Wait for a predetermined amount of time
+        buzzer.on()
+        time.sleep(duration)
+        buzzer.off()
         gpio_states["speaker"] = False
     except Exception as e:
-        print(f"An error occurred while playing sound: {e}")
-    finally:
-        pass
+        print(f"Error playing sound: {e}")
+
 
 # Interactions
-def lever_press(state_machine = None):
+def lever_press(state_machine=None):
     try:
-        if state_machine != None:
+        if state_machine:
             state_machine.lever_press()
         else:
-            lever.on()
+            safe_gpio_call(lever, 'on')
             gpio_states["lever"] = True
             print("Lever pressed")
-            time.sleep(0.1) #TODO Get rid of this
-            lever.off()
+            safe_gpio_call(lever, 'off')
             gpio_states["lever"] = False
     except Exception as e:
-        print(f"An error occurred during lever press: {e}")
+        print(f"Error in lever press: {e}")
     feed()
 
-def nose_poke(state_machine = None):
+def nose_poke(state_machine=None):
     try:
-        print("Nose poke")
-        if state_machine != None:
+        print("Nose poke detected")
+        if state_machine:
             state_machine.nose_poke()
         else:
-            poke.on()
+            safe_gpio_call(poke, 'on')
             gpio_states["nose_poke"] = True
-            time.sleep(0.1)
-            poke.off()
+            safe_gpio_call(poke, 'off')
             gpio_states["nose_poke"] = False
     except Exception as e:
-        print(f"An error occurred during nose poke: {e}")
+        print(f"Error in nose poke: {e}")
     water()
+
 #endregion

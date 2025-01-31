@@ -7,7 +7,7 @@ import time
 from app import gpio
 from app.app_config import log_directory
 
-class TrialStateMachine:
+class TrialStateMachine: #TODO update trial logs to be json's
     """
     A state machine to manage the trial process in a behavioral experiment.
     Attributes:
@@ -116,28 +116,45 @@ class TrialStateMachine:
             return False
 
     def run_trial(self, goal, duration):
+        """
+        Runs the trial for the given duration or until the goal interactions are reached.
+        """
         self.startTime = time.time()
+        self.currentIteration = 0  # Ensure iteration count starts at zero
 
-        if(self.settings.get('interactionType') == 'lever'):
+        # Assign interaction callbacks
+        interaction_type = self.settings.get('interactionType')
+        if interaction_type == 'lever':
             gpio.lever.when_pressed = self.lever_press
-        elif(self.settings.get('interactionType') == 'poke'):
+        elif interaction_type == 'poke':
             gpio.poke.when_pressed = self.nose_poke
 
         while self.state == 'Running':
-            self.timeRemaining = (duration - (time.time() - self.startTime)).__round__(2) #TODO Not working
-            if (time.time() - self.lastStimulusTime) >= float(self.settings.get('cooldown', 0)) and self.interactable:
-                print("No interaction in last 10s, Re-Stimming")
-                self.give_stimulus()
+            # Ensure `timeRemaining` updates correctly
+            elapsed_time = time.time() - self.startTime
+            self.timeRemaining = max(0, round(duration - elapsed_time, 2))
 
-            #Finish trial
+            # Re-stimulate if no interaction has occurred within the cooldown time
+            cooldown_time = float(self.settings.get('cooldown', 0))
+            if self.interactable and (elapsed_time - self.lastStimulusTime) >= cooldown_time:
+                print("No interaction in last cooldown period, Re-Stimming")
+                self.give_stimulus()
+                self.lastStimulusTime = elapsed_time  # Update stimulus time
+
+            # **Check if trial should finish**
             if self.currentIteration >= goal or self.timeRemaining <= 0:
-                self.total_time = (time.time() - self.startTime).__round__(2)
-                if self.interactable: #This is here to make sure it records the last interaction
-                    #TODO Find a better way to do this ^^
-                    self.finish_trial()
-                    break
-            time.sleep(.10)
-            
+                self.total_time = round(elapsed_time, 2)
+
+                # **Ensure last interaction is recorded**
+                if self.interactable:
+                    print("Recording final interaction before finishing.")
+                    self.add_interaction("Final", "N/A", self.interactions_between, self.time_between)
+
+                self.finish_trial()
+                break
+
+            time.sleep(0.1)  # Small sleep interval to reduce CPU usage
+
     ## Interactions ##
     def lever_press(self):
         current_time = time.time()
@@ -222,29 +239,64 @@ class TrialStateMachine:
         
         # Log the interaction
         self.interactions.append([entry, interaction_time, interaction_type, reward_given, interactions_between, time_between])
+    
+    def log_manual_interaction(action_type):
+        log_entry = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "interaction": action_type
+        }
 
+        log_file = "manual_interactions.json"
+        try:
+            with open(log_file, "a") as f:
+                json.dump(log_entry, f)
+                f.write("\n")
+            print(f"Logged manual interaction: {action_type}")
+        except Exception as e:
+            print(f"Error logging interaction: {e}")
+            
     def push_log(self):
-        #TODO create log file
-        with open(self.log_path, 'w', newline='') as file:
-            writer = csv.writer(file)
-            headers = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
-            writer.writerow(headers)
-            # Write the date and time of the trial under the 'Date/Time' column
-            for interaction in self.interactions:
-                if interaction == self.interactions[0]:
-                    writer.writerow([time.strftime("%m/%d/%Y %H:%M:%S"), self.total_time, self.total_interactions, '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
-                else:
-                    writer.writerow(['', '', '', '', interaction[0], interaction[1], interaction[2], interaction[3], interaction[4], interaction[5]])
+        """
+        Converts trial logs to JSON format and writes them to a file.
+        """
+        log_data = {
+            "date_time": time.strftime("%m/%d/%Y %H:%M:%S"),
+            "total_time": self.total_time,
+            "total_interactions": self.total_interactions,
+            "interactions": [
+                {
+                    "entry": entry[0],
+                    "interaction_time": entry[1],
+                    "type": entry[2],
+                    "reward": entry[3],
+                    "interactions_between": entry[4],
+                    "time_between": entry[5]
+                }
+                for entry in self.interactions
+            ]
+        }
+
+        # Ensure log directory exists
+        if not os.path.exists(self.log_path):
+            os.makedirs(self.log_path)
+
+        log_filename = f"{self.log_path}/log_{time.strftime('%m_%d_%y_%H_%M_%S')}.json"
+        with open(log_filename, 'w') as file:
+            json.dump(log_data, file, indent=4)
+
+        print(f"Log saved: {log_filename}")
 
     def finish_trial(self):
         with self.lock:
             if self.state == 'Running':
+                if self.interactable:  # Ensuring the last interaction is logged
+                    self.add_interaction("Final", "N/A", self.interactions_between, self.time_between)
                 self.state = 'Completed'
                 self.push_log()
                 print("Trial complete")
                 return True
             return False
-            
+
     def error(self):
         with self.lock:
             self.state = 'Error'
@@ -252,13 +304,26 @@ class TrialStateMachine:
             self.state = 'Idle'
 
     def pause_trial_logic(self):
-        # TODO Code to pause trial
-        pass
+        """
+        Pauses the trial by disabling interactions.
+        """
+        self.interactable = False  # Prevent new interactions
+        self.state = 'Paused'
+        print("Trial Paused")
 
     def resume_trial_logic(self):
-        # TODO Code to resume trial
-        pass
+        """
+        Resumes the trial by enabling interactions.
+        """
+        self.interactable = True  # Allow new interactions
+        self.state = 'Running'
+        print("Trial Resumed")
 
-    def handle_error(self):
-        # TODO Code to handle errors
-        pass
+    def handle_error(self, error_message="An unknown error occurred"):
+        """
+        Handles errors by logging and changing state.
+        """
+        self.state = 'Error'
+        print(f"Error: {error_message}")
+        self.push_log()
+

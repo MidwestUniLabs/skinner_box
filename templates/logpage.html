@@ -10,48 +10,97 @@
 
 {% block scripts %}
     <script>
-        onload= function() {
-            // Check if user is logged in
-        fetch('/current_user')
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                if (!data.current_user) { // If not logged in, hide remote logs
-                    document.getElementById('remote-logs').style.display = 'none';
-                    document.getElementById('remote-log-btn').style.display = 'none';
-                    document.getElementById('local-log-btn').style.display = 'inline-block';
-                    showLocalLogs();
-                } else { // If logged in, show remote logs
-                    document.getElementById('remote-logs').style.display = 'block';
-                    document.getElementById('remote-log-btn').style.display = 'inline-block';
-                    document.getElementById('local-log-btn').style.display = 'inline-block';
-                    document.getElementById('LoginWarning').style.display = 'none';
-                    showRemoteLogs();
-                }
-            })
-            .catch(error => console.error('Error fetching current user:', error));
+        onload = function () {
+            fetch('/current_user')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.current_user) {
+                        document.getElementById('remote-logs').style.display = 'none';
+                        document.getElementById('remote-log-btn').style.display = 'none';
+                        document.getElementById('local-log-btn').style.display = 'inline-block';
+                        showLocalLogs();
+                    } else {
+                        document.getElementById('remote-logs').style.display = 'block';
+                        document.getElementById('remote-log-btn').style.display = 'inline-block';
+                        document.getElementById('local-log-btn').style.display = 'inline-block';
+                        document.getElementById('LoginWarning').style.display = 'none';
+                        showRemoteLogs();
+                    }
+                })
+                .catch(error => console.error('Error fetching current user:', error));
+        };
+
+        function viewTrialDetails(trialInfo) {
+            console.log("Viewing trial details:", trialInfo);
+
+            const logViewer = document.getElementById('log-viewer');
+
+            // Clear existing content
+            logViewer.innerHTML = '';
+
+            // Add trial summary details
+            const trialSummary = `
+                <table>
+                    <tr><th>Date/Time</th><th>Total Time</th><th>Total Interactions</th></tr>
+                    <tr>
+                        <td>${new Date(trialInfo.start_time).toLocaleString()}</td>
+                        <td>${((new Date(trialInfo.end_time) - new Date(trialInfo.start_time)) / 1000).toFixed(2)}</td>
+                        <td>${trialInfo.total_interactions}</td>
+                    </tr>
+                </table>
+            `;
+            logViewer.innerHTML += trialSummary;
+
+            // Add trial entry details
+            if (trialInfo.valuesInfoPosition && trialInfo.valuesInfoPosition.length > 0) {
+                const trialValuesTable = `
+                    <table>
+                        <tr>
+                            <th>Entry</th><th>Interaction Time</th><th>Type</th>
+                            <th>Reward</th><th>Interactions Between</th><th>Time Between</th>
+                        </tr>
+                        ${trialInfo.valuesInfoPosition.map(entry => `
+                            <tr>
+                                <td>${entry.entry_num}</td>
+                                <td>${entry.rel_time}</td>
+                                <td>${entry.type}</td>
+                                <td>${entry.reward ? 'Yes' : 'No'}</td>
+                                <td>${entry.interactions_between}</td>
+                                <td>${entry.time_between}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                `;
+                logViewer.innerHTML += trialValuesTable;
+            } else {
+                logViewer.innerHTML += '<p>No trial entries available.</p>';
+            }
         }
-        function viewLog(filename) {
-            // Fetch log content and display in the log viewer
-            fetch('/view-log/' + encodeURIComponent(filename))
-                .then(response => response.text())
-                .then(html => {
-                    const logViewer = document.getElementById('log-viewer');
-                    logViewer.innerHTML = html; // Use innerHTML instead of textContent
 
-                    // Update the download buttons
-                    var downloadBtn = document.getElementById('download-btn');
-                    downloadBtn.href = '/download-raw-log/' + encodeURIComponent(filename);
-                    downloadBtn.style.display = 'inline-block';
+        function showRemoteLogs() {
+            fetch('/pull_user_logs')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Remote logs data:', data); // Debugging log
+                    const remoteLogsContainer = document.getElementById('remote-logs');
+                    remoteLogsContainer.innerHTML = ''; // Clear existing content
 
-                    var downloadExcelBtn = document.getElementById('download-excel-btn');
-                    downloadExcelBtn.href = '/download-excel-log/' + encodeURIComponent(filename);
-                    downloadExcelBtn.style.display = 'inline-block';
+                    data.data.forEach(trial => {
+                        const trialElement = document.createElement('a');
+                        trialElement.textContent = new Date(trial.start_time).toLocaleString();
+                        trialElement.onclick = () => viewTrialDetails(trial);
+                        remoteLogsContainer.appendChild(trialElement);
+                    });
                 })
                 .catch(error => {
-                    console.error('Error fetching the log:', error);
-                    document.getElementById('log-viewer').textContent = 'Error loading log content.';
+                    console.error('Error fetching remote trials:', error);
+                    document.getElementById('remote-logs').innerHTML = '<p>Error loading remote logs.</p>';
                 });
+
+            document.getElementById('local-logs').style.display = 'none';
+            document.getElementById('local-log-btn').style.backgroundColor = 'transparent';
+            document.getElementById('remote-logs').style.display = 'block';
+            document.getElementById('remote-log-btn').style.backgroundColor = '#3700B3';
         }
         function showLocalLogs(){
             document.getElementById('local-logs').style.display = 'block';
@@ -59,12 +108,7 @@
             document.getElementById('remote-logs').style.display = 'none';
             document.getElementById('remote-log-btn').style.backgroundColor = 'transparent';
         }
-        function showRemoteLogs(){
-            document.getElementById('local-logs').style.display = 'none';
-            document.getElementById('local-log-btn').style.backgroundColor = 'transparent';
-            document.getElementById('remote-logs').style.display = 'block';
-            document.getElementById('remote-log-btn').style.backgroundColor = '#3700B3';
-        }
+
     </script>
 {% endblock %}
 
@@ -76,20 +120,18 @@
                 <a id="local-log-btn" href="javascript:showLocalLogs();" style="width: 25%; display: none;">Local</a>
             </div>
             <div id="remote-logs" style="display: none;">
-                <p>WIP</p>
+                <p>Loading remote logs...</p>
             </div>
             <div id="local-logs" style="display: none;">
-                <!-- Log list will be populated by Flask -->
                 {% for log_file in log_files %}
-                <a onclick="viewLog('{{ log_file }}')">{{ log_file }}</a>
+                    <a onclick="viewLog('{{ log_file }}')">{{ log_file }}</a>
                 {% endfor %}
             </div>
             <div id="LoginWarning" style="display: none;">
-                <p style="color: #3700B3;">Remote Log Viewer is only available to logged in users.</p>
+                <p style="color: #3700B3;">Remote Log Viewer is only available to logged-in users.</p>
             </div>
         </div>
         <div id="log-viewer" style="display: block;">
-            <!-- Log content will be displayed here -->
             <p>Log Viewer:</p>
         </div>
     </div>
