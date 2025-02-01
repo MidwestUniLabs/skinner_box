@@ -170,9 +170,9 @@ def start():
             return render_template('runningtrialpage.html', settings=settings)
         return render_template('trialsettingspage.html', settings=settings)
 
-@app.route('/stop', methods=['POST'])
-def stop(): # Stops the trial
-    if trial_state_machine.finish_trial():
+@app.route('/manuallyEndTrial', methods=['POST'])
+def manuallyEndTrial(): # Stops the trial
+    if trial_state_machine.finish_trial("Manually Ended"):
         return redirect(url_for('trial_settings'))
     return redirect(url_for('trial_settings'))
 

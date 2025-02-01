@@ -7,7 +7,7 @@ import time
 from app import gpio
 from app.app_config import log_directory
 
-class TrialStateMachine: #TODO update trial logs to be json's
+class TrialStateMachine:
     """
     A state machine to manage the trial process in a behavioral experiment.
     Attributes:
@@ -53,6 +53,7 @@ class TrialStateMachine: #TODO update trial logs to be json's
         self.lock = threading.Lock()
         self.currentIteration = 0
         self.settings = {}
+        self.startDate = None
         self.startTime = None
         self.interactable = True
         self.lastSuccessfulInteractTime = None
@@ -62,8 +63,10 @@ class TrialStateMachine: #TODO update trial logs to be json's
         self.interactions_between = 0
         self.time_between = 0.0
         self.total_interactions = 0
-        self.total_time = 0
+        self.elapsed_time = 0
+        self.endStatus = None
         self.interactions = []
+
     def load_settings(self):
         # Implementation of loading settings from file
         try:
@@ -82,6 +85,7 @@ class TrialStateMachine: #TODO update trial logs to be json's
                 self.currentIteration = 0
                 self.lastStimulusTime = time.time()
                 self.state = 'Running'
+                self.startDate = time.strftime("%m/%d/%Y")
                 # Format the current time to include date and time in the filename
                 # YYYY_MM_DD_HH_MM_SS
                 safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
@@ -131,26 +135,31 @@ class TrialStateMachine: #TODO update trial logs to be json's
 
         while self.state == 'Running':
             # Ensure `timeRemaining` updates correctly
-            elapsed_time = time.time() - self.startTime
-            self.timeRemaining = max(0, round(duration - elapsed_time, 2))
+            self.elapsed_time = time.time() - self.startTime
+            self.timeRemaining = max(0, round(duration - self.elapsed_time, 2))
 
             # Re-stimulate if no interaction has occurred within the cooldown time
             cooldown_time = float(self.settings.get('cooldown', 0))
-            if self.interactable and (elapsed_time - self.lastStimulusTime) >= cooldown_time:
+            if self.interactable and (self.elapsed_time - self.lastStimulusTime) >= cooldown_time:
                 print("No interaction in last cooldown period, Re-Stimming")
                 self.give_stimulus()
-                self.lastStimulusTime = elapsed_time  # Update stimulus time
+                self.lastStimulusTime = self.elapsed_time  # Update stimulus time
 
             # **Check if trial should finish**
-            if self.currentIteration >= goal or self.timeRemaining <= 0:
-                self.total_time = round(elapsed_time, 2)
+            if self.currentIteration >= goal: # Goal reached
+                self.elapsed_time = round(self.elapsed_time, 2)
 
                 # **Ensure last interaction is recorded**
                 if self.interactable:
                     print("Recording final interaction before finishing.")
                     self.add_interaction("Final", "N/A", self.interactions_between, self.time_between)
 
-                self.finish_trial()
+                self.finish_trial(endStatus="Goal Reached")
+                break
+
+            elif self.timeRemaining <= 0: # Time limit reached
+                self.elapsed_time = round(self.elapsed_time, 2)
+                self.finish_trial(endStatus="Time Limit Reached")
                 break
 
             time.sleep(0.1)  # Small sleep interval to reduce CPU usage
@@ -260,9 +269,11 @@ class TrialStateMachine: #TODO update trial logs to be json's
         Converts trial logs to JSON format and writes them to a file.
         """
         log_data = {
-            "date_time": time.strftime("%m/%d/%Y %H:%M:%S"),
-            "total_time": self.total_time,
+            "status": self.endStatus,
+            "start_time": time.strftime('%H:%M:%S', time.localtime(self.startTime)),
+            "end_time": time.strftime('%H:%M:%S', time.localtime(self.startTime + self.elapsed_time)),
             "total_interactions": self.total_interactions,
+            "creation_date": self.startDate,
             "interactions": [
                 {
                     "entry": entry[0],
@@ -286,12 +297,13 @@ class TrialStateMachine: #TODO update trial logs to be json's
 
         print(f"Log saved: {log_filename}")
 
-    def finish_trial(self):
+    def finish_trial(self, endStatus):
         with self.lock:
             if self.state == 'Running':
                 if self.interactable:  # Ensuring the last interaction is logged
                     self.add_interaction("Final", "N/A", self.interactions_between, self.time_between)
                 self.state = 'Completed'
+                self.endStatus = endStatus
                 self.push_log()
                 print("Trial complete")
                 return True
