@@ -30,7 +30,7 @@
                 .catch(error => console.error('Error fetching current user:', error));
         };
 
-        function viewTrialDetails(trialInfo) {
+        function viewRemoteLog(trialInfo) {
             console.log("Viewing trial details:", trialInfo);
 
             const logViewer = document.getElementById('log-viewer');
@@ -77,6 +77,67 @@
             }
         }
 
+        function viewLocalLog(filename) {
+            console.log(`Fetching local log content for: ${filename}`);
+            
+            document.getElementById('download-btn').href = `/download-raw-log/${encodeURIComponent(filename)}`;
+            document.getElementById('download-excel-btn').href = `/download-excel-log/${encodeURIComponent(filename)}`;
+            document.getElementById('download-btn').style.display = 'inline-block';
+            document.getElementById('download-excel-btn').style.display = 'inline-block';
+            document.getElementById('push-cloud-btn').style.display = 'inline-block';
+
+            fetch(`/view-log/${encodeURIComponent(filename)}`)
+                .then(response => response.json())  // Expecting JSON response
+                .then(trialInfo => {
+                    console.log("Viewing local trial details:", trialInfo);
+
+                    const logViewer = document.getElementById('log-viewer');
+                    logViewer.innerHTML = ''; // Clear existing content
+
+                    // Add trial summary details
+                    const trialSummary = `
+                        <table>
+                            <tr><th>Date/Time</th><th>Total Time</th><th>Total Interactions</th></tr>
+                            <tr>
+                                <td>${new Date(trialInfo.start_time).toLocaleString()}</td>
+                                <td>${((new Date(trialInfo.end_time) - new Date(trialInfo.start_time)) / 1000).toFixed(2)} sec</td>
+                                <td>${trialInfo.total_interactions}</td>
+                            </tr>
+                        </table>
+                    `;
+                    logViewer.innerHTML += trialSummary;
+
+                    // Add trial entry details
+                    if (trialInfo.trial_entries && trialInfo.trial_entries.length > 0) {
+                        const trialValuesTable = `
+                            <table>
+                                <tr>
+                                    <th>Entry</th><th>Interaction Time</th><th>Type</th>
+                                    <th>Reward</th><th>Interactions Between</th><th>Time Between</th>
+                                </tr>
+                                ${trialInfo.trial_entries.map(entry => `
+                                    <tr>
+                                        <td>${entry.entry_num}</td>
+                                        <td>${entry.rel_time.toFixed(2)}</td>
+                                        <td>${entry.type}</td>
+                                        <td>${entry.reward ? 'Yes' : 'No'}</td>
+                                        <td>${entry.interactions_between}</td>
+                                        <td>${entry.time_between.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                            </table>
+                        `;
+                        logViewer.innerHTML += trialValuesTable;
+                    } else {
+                        logViewer.innerHTML += '<p>No trial entries available.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching the log:', error);
+                    document.getElementById('log-viewer').innerHTML = '<p>Error loading log content.</p>';
+                });
+        }
+
         function showRemoteLogs() {
             fetch('/pull_user_logs')
                 .then(response => response.json())
@@ -88,7 +149,7 @@
                     data.data.forEach(trial => {
                         const trialElement = document.createElement('a');
                         trialElement.textContent = new Date(trial.start_time).toLocaleString();
-                        trialElement.onclick = () => viewTrialDetails(trial);
+                        trialElement.onclick = () => viewRemoteLog(trial);
                         remoteLogsContainer.appendChild(trialElement);
                     });
                 })
@@ -101,13 +162,92 @@
             document.getElementById('local-log-btn').style.backgroundColor = 'transparent';
             document.getElementById('remote-logs').style.display = 'block';
             document.getElementById('remote-log-btn').style.backgroundColor = '#3700B3';
+            
+            document.getElementById('download-btn').style.display = 'none';
+            document.getElementById('download-excel-btn').style.display = 'none';
+            document.getElementById('push-cloud-btn').style.display = 'none';
         }
-        function showLocalLogs(){
-            document.getElementById('local-logs').style.display = 'block';
-            document.getElementById('local-log-btn').style.backgroundColor = '#3700B3';
+
+        function showLocalLogs() {
+            fetch('/list_local_logs')
+                .then(response => response.json())
+                .then(data => {
+                    const localLogsContainer = document.getElementById('local-logs');
+                    localLogsContainer.innerHTML = ''; // Clear existing content
+
+                    data.log_files.forEach(log_file => {
+                        const logElement = document.createElement('a');
+                        logElement.textContent = log_file;
+                        logElement.href = "#"; // Prevent page reload
+
+                        logElement.onclick = function () {
+                            console.log(`Clicked log: ${log_file}`); // Debugging log
+                            viewLocalLog(log_file);
+                        };
+
+                        localLogsContainer.appendChild(logElement);
+                    });
+
+                    console.log("Local logs loaded:", data.log_files); // Debugging log
+
+                })
+                .catch(error => {
+                    console.error('Error fetching local logs:', error);
+                    document.getElementById('local-logs').innerHTML = '<p>Error loading local logs.</p>';
+                });
+
             document.getElementById('remote-logs').style.display = 'none';
             document.getElementById('remote-log-btn').style.backgroundColor = 'transparent';
+            document.getElementById('local-logs').style.display = 'block';
+            document.getElementById('local-log-btn').style.backgroundColor = '#3700B3';
+            
+            document.getElementById('download-btn').href = '';
+            document.getElementById('download-btn').style.display = 'none';
+            document.getElementById('download-excel-btn').href = '';
+            document.getElementById('download-excel-btn').style.display = 'none';
+            document.getElementById('push-cloud-btn').style.display = 'none';
         }
+
+        function pushLogToCloud() {
+            const pushButton = document.getElementById('push-cloud-btn');
+            const fileUrl = document.getElementById('download-btn').href;
+            
+            if (!fileUrl || fileUrl === window.location.href) {
+                alert("No log selected to push.");
+                return;
+            }
+
+            const filename = decodeURIComponent(fileUrl.split('/').pop());
+            console.log(`Pushing log to cloud: ${filename}`);
+
+            // Fetch the log file contents before sending
+            fetch(`/view-log/${encodeURIComponent(filename)}`)
+                .then(response => response.blob())  // Get the file as a Blob
+                .then(blob => {
+                    const formData = new FormData();
+                    formData.append("file", blob, filename);  // Attach the file blob
+
+                    return fetch('/push_log', {
+                        method: 'POST',
+                        body: formData
+                    });
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(`Error pushing log: ${data.error}`);
+                    } else {
+                        alert("Log successfully pushed to the cloud!");
+                        pushButton.style.display = 'none';  // Hide button after successful push
+                        showLocalLogs(); // Refresh local logs after deletion
+                    }
+                })
+                .catch(error => {
+                    console.error('Error pushing log:', error);
+                    alert("Failed to push log.");
+                });
+        }
+
 
     </script>
 {% endblock %}
@@ -124,7 +264,7 @@
             </div>
             <div id="local-logs" style="display: none;">
                 {% for log_file in log_files %}
-                    <a onclick="viewLog('{{ log_file }}')">{{ log_file }}</a>
+                    <a onclick="viewLocalLog('{{ log_file }}')">{{ log_file }}</a>
                 {% endfor %}
             </div>
             <div id="LoginWarning" style="display: none;">
@@ -136,7 +276,8 @@
         </div>
     </div>
     <div id="download-buttons" style="display: block;">
-        <a id="download-btn" href="" download>Download Raw Log</a>
-        <a id="download-excel-btn" href="" download>Download Excel Log</a>
+        <a id="download-btn" href="">Download Raw Log</a>
+        <a id="download-excel-btn" href="">Download Excel Log</a>
+        <a id="push-cloud-btn" href="javascript:pushLogToCloud();" style="display: none;">Push Log</a>
     </div>
 {% endblock %}

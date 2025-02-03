@@ -208,7 +208,7 @@ def log_viewer(): # Displays the log files in the log directory
     log_files = list_log_files_sorted(log_directory)  # Get sorted list of log files
     return render_template('logpage.html', log_files=log_files)
 
-@app.route('/download-raw-log/<filename>') #TODO Update to accept json (if needed)
+@app.route('/download-raw-log/<filename>') 
 def download_raw_log_file(filename): # Download the raw log file
     filename = secure_filename(filename)  # Sanitize the filename
     try:
@@ -216,64 +216,94 @@ def download_raw_log_file(filename): # Download the raw log file
     except FileNotFoundError:
         return "Log file not found.", 404
 
-@app.route('/download-excel-log/<filename>') #TODO Update to accept json
-def download_excel_log_file(filename): # Download the Excel log file
-    # Use safe_join to ensure the filename is secure
-    secure_filename = safe_join(log_directory, filename)
+@app.route('/download-excel-log/<filename>')
+def download_excel_log_file(filename):
+    """
+    Convert a JSON log file into an Excel file and provide it for download.
+    """
+    filename = secure_filename(filename)
+    file_path = os.path.join(log_directory, filename)
+
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "Log file not found."}), 404
+
     try:
-        # Initialize a workbook and select the active worksheet
+        # Load JSON log data
+        with open(file_path, 'r') as file:
+            trial_data = json.load(file)
+
+        # Create an Excel workbook and sheet
         wb = Workbook()
         ws = wb.active
-        if not os.path.exists(temp_directory):
-            os.makedirs(temp_directory)
-        
-        # Define your column titles here
-        column_titles = ['Date/Time', 'Total Time', 'Total Interactions', '', 'Entry', 'Interaction Time', 'Type', 'Reward', 'Interactions Between', 'Time Between']
-        ws.append(column_titles)
-        # Check if the file exists and is a CSV file
-        if not os.path.isfile(secure_filename) or not filename.endswith('.csv'):
-            print(f'CSV file not found or incorrect file type: {secure_filename}')
-            return "Log file not found.", 404
-        # Read the CSV file and append rows to the worksheet
-        with open(secure_filename, mode='r', newline='') as file:
-            reader = csv.reader(file)
-            next(reader, None)  # Skip the header of the CSV if it's already included
-            for row in reader:
-                ws.append(row)
-        
+        ws.title = "Trial Log"
+
+        # Add trial summary
+        summary_headers = ["Pi ID", "Status", "Start Time", "End Time", "Total Interactions"]
+        ws.append(summary_headers)
+        ws.append([
+            trial_data.get("pi_id", "N/A"),
+            trial_data.get("status", "N/A"),
+            trial_data.get("start_time", "N/A"),
+            trial_data.get("end_time", "N/A"),
+            trial_data.get("total_interactions", "N/A"),
+        ])
+
+        # Add spacing row
+        ws.append([])
+
+        # Add trial entry details
+        entry_headers = ["Entry #", "Relative Time", "Type", "Reward", "Interactions Between", "Time Between"]
+        ws.append(entry_headers)
+
+        for entry in trial_data.get("trial_entries", []):
+            ws.append([
+                entry.get("entry_num", "N/A"),
+                entry.get("rel_time", "N/A"),
+                entry.get("type", "N/A"),
+                "Yes" if entry.get("reward", False) else "No",
+                entry.get("interactions_between", "N/A"),
+                entry.get("time_between", "N/A"),
+            ])
+
         # Save the workbook to a temporary file
         temp_filename = f'{filename.rsplit(".", 1)[0]}.xlsx'
         temp_filepath = os.path.join(temp_directory, temp_filename)
         wb.save(temp_filepath)
-        
-        # Send the Excel file as an attachment
-        return send_file(temp_filepath, as_attachment=True, download_name=temp_filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    except FileNotFoundError:
-        print(f'Excel file not found: {temp_filename}')
-        return "Converted log file not found.", 404
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return "An error occurred while processing the request.", 500
 
-@app.route('/view-log/<filename>') # TODO Deprecate
-def view_log(filename): # View the log file in the browser
+        # Send the Excel file as an attachment
+        return send_file(
+            temp_filepath,
+            as_attachment=True,
+            download_name=temp_filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error converting log to Excel: {e}")
+        return jsonify({"error": "An error occurred while processing the request."}), 500
+
+@app.route('/view-log/<filename>')
+def view_log(filename):
+    """
+    Fetches and returns the contents of a local log file as JSON.
+    """
     filename = secure_filename(filename)
     file_path = os.path.join(log_directory, filename)
 
-    if os.path.isfile(file_path):
-        with open(file_path, 'r') as file:
-            log_content = file.readlines()
+    if not os.path.isfile(file_path):
+        print(f"Log file not found: {file_path}")
+        return jsonify({"error": "Log file not found."}), 404
 
-        # Create an HTML table with the log content
-        rows = []
-        for line in log_content:
-            cells = line.strip().split(',')
-            rows.append(cells)
-            
-        # Pass the rows to the template instead of directly returning HTML
-        return render_template("t_logviewer.html", rows=rows)
-    else:
-        return "Log file not found.", 404
+    try:
+        with open(file_path, 'r') as file:
+            trial_data = json.load(file)  # Assuming logs are JSON formatted
+
+        return jsonify(trial_data)
+
+    except Exception as e:
+        print(f"Error reading log file: {e}")
+        return jsonify({"error": "Error loading log content."}), 500
+
 
 @app.route('/login_user', methods=['POST'])
 def login_user():
@@ -327,45 +357,68 @@ def logout_user():
         print(f"Error logging out user: {e}")
         return {"error": "Failed to log out user."}, 500
 
-@app.route('/push_data', methods=['POST'])
+@app.route('/push_log', methods=['POST'])
 @login_required
-def push_data():
-    # Get the user token data
+def push_log():
+    """
+    Read a JSON trial log file, push it to the API, and delete it locally upon success.
+    """
     token_data = load_token()
-    username = token_data.get("username")
-    if not username:
-        return {"error": "Username not found in token."}, 400
+    if not token_data or "username" not in token_data:
+        return jsonify({"error": "Invalid authentication token."}), 403
 
-    # Get the trial log file from the request
+    # Ensure file is uploaded
     if 'file' not in request.files:
-        return {"error": "No file part in the request."}, 400
+        return jsonify({"error": "No file part in the request."}), 400
     file = request.files['file']
     if file.filename == '':
-        return {"error": "No selected file."}, 400
+        return jsonify({"error": "No selected file."}), 400
 
-    # Secure the filename and save it temporarily
+    # Secure filename and save temporarily
     filename = secure_filename(file.filename)
     temp_filepath = os.path.join(temp_directory, filename)
     file.save(temp_filepath)
 
-    # Prepare the data to be sent
-    data = {
-        'username': username,
-        'box_id': request.form.get('box_id'),
-        'trial_log': open(temp_filepath, 'r').read()
-    }
-
-    # Push data to Cloud Run
     try:
-        response = requests.post(f'{CLOUD_RUN_URL}/data/push', json=data)
-        response.raise_for_status()
-        print(f'Pushing data to Cloud Run: {CLOUD_RUN_URL}')
-        return {"message": "Data pushed successfully."}, 200
+        # Read JSON log file
+        with open(temp_filepath, 'r') as log_file:
+            trial_data = json.load(log_file)
+
+        # Ensure required fields exist
+        required_fields = ["pi_id", "status", "start_time", "end_time", "total_interactions", "trial_entries"]
+        if not all(field in trial_data for field in required_fields):
+            return jsonify({"error": "Invalid log format. Missing required fields."}), 400
+
+        # Validate trial entries
+        for entry in trial_data["trial_entries"]:
+            required_entry_fields = ["entry_num", "rel_time", "type", "reward", "interactions_between", "time_between"]
+            if not all(field in entry for field in required_entry_fields):
+                return jsonify({"error": "Invalid entry format. Missing required fields."}), 400
+
+        # Attach UID to ensure the trial is linked to the user
+        trial_data["uid"] = token_data.get("uid")
+
+        # Send request to Cloud Run API
+        headers = {'Authorization': f"Bearer {token_data.get('access_token')}"}
+        response = requests.post(f'{CLOUD_RUN_URL}/trials/push', json=trial_data, headers=headers)
+
+        # Handle response
+        if response.status_code in [200, 201]:
+            local_log_path = os.path.join(log_directory, filename)
+            if os.path.exists(local_log_path):
+                os.remove(local_log_path)
+                print(f"Deleted local log after push: {local_log_path}")
+            return jsonify({"message": "Log pushed successfully and deleted locally.", "response": response.json()}), response.status_code
+        else:
+            return jsonify({"error": "Failed to push log to API", "api_response": response.text}), response.status_code
+
+
     except Exception as e:
-        print(f'Error pushing data to Cloud Run: {e}')
-        return {"error": str(e)}, 500
+        app.logger.error(f'Error processing log file: {e}')
+        return jsonify({"error": "An error occurred while processing the log."}), 500
+
     finally:
-        # Clean up the temporary file
+        # Clean up temporary file
         if os.path.exists(temp_filepath):
             os.remove(temp_filepath)
 
@@ -426,6 +479,17 @@ def pull_user_logs():
         print(f"Error processing user logs: {e}")
         return {"error": str(e)}, 500
 
+@app.route('/list_local_logs', methods=['GET'])
+def list_local_logs():
+    """
+    List all local log files in the log directory.
+    """
+    try:
+        log_files = [f for f in os.listdir(log_directory) if os.path.isfile(os.path.join(log_directory, f))]
+        return jsonify({"log_files": log_files}), 200
+    except Exception as e:
+        print(f"Error listing local logs: {e}")
+        return jsonify({"error": "Failed to list local logs."}), 500
 
 # def Pull_User_Data(username) :#TODO This should only be accessible when the user is logged in and should get the username from that
 #     # Pull user data from Cloud Run

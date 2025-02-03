@@ -154,8 +154,8 @@ footer {
 }
 
 /* Download Buttons */
-#download-btn, #download-excel-btn {
-    display: none;
+#download-btn, #download-excel-btn, #push-cloud-btn {
+    display: inline-block;
     margin-top: 10px;
     padding: 8px 15px;
     color: white;
@@ -177,6 +177,14 @@ footer {
 
 #download-excel-btn:hover {
     background-color: #007BA7;
+}
+
+#push-cloud-btn {
+    background-color: #FFA500;
+}
+
+#push-cloud-btn:hover {
+    background-color: #FF9F00;
 }
 
 /* Log Location Buttons */

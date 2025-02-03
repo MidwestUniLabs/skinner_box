@@ -5,6 +5,7 @@ import json
 import os
 import time
 from app import gpio
+from dotenv import load_dotenv
 from app.app_config import log_directory
 
 class TrialStateMachine:
@@ -53,7 +54,6 @@ class TrialStateMachine:
         self.lock = threading.Lock()
         self.currentIteration = 0
         self.settings = {}
-        self.startDate = None
         self.startTime = None
         self.interactable = True
         self.lastSuccessfulInteractTime = None
@@ -85,12 +85,11 @@ class TrialStateMachine:
                 self.currentIteration = 0
                 self.lastStimulusTime = time.time()
                 self.state = 'Running'
-                self.startDate = time.strftime("%m/%d/%Y")
                 # Format the current time to include date and time in the filename
                 # YYYY_MM_DD_HH_MM_SS
                 safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
                 # Update log_path to include the date and time
-                self.log_path = log_directory + f"/log_{safe_time_str}.csv"
+                self.log_path = log_directory + f"log_{safe_time_str}.csv"
                 threading.Thread(target=self.run_trial, args=(goal, duration)).start()
                 self.give_stimulus()
                 return True
@@ -179,11 +178,11 @@ class TrialStateMachine:
             self.interactable = False  # Disallow further interactions until reset
             self.currentIteration += 1
             self.give_reward()
-            self.add_interaction("Lever Press", "Yes", self.interactions_between, self.time_between)
+            self.add_interaction("Lever", True, self.interactions_between, self.time_between)
             self.lastSuccessfulInteractTime = current_time  # Update only on successful interaction when interactable
             self.interactions_between = 0
         else:
-            self.add_interaction("Lever Press", "No", self.interactions_between, 0)
+            self.add_interaction("Lever", False, self.interactions_between, 0)
             self.interactions_between += 1
 
     def nose_poke(self):
@@ -199,11 +198,11 @@ class TrialStateMachine:
             self.interactable = False
             self.currentIteration += 1
             self.give_reward()
-            self.add_interaction("Nose poke", "Yes", self.interactions_between, self.time_between)
+            self.add_interaction("Poke", True, self.interactions_between, self.time_between)
             self.lastSuccessfulInteractTime = current_time  # Update only on successful interaction when interactable
             self.interactions_between = 0
         else:
-            self.add_interaction("Nose poke", "No", self.interactions_between, 0)
+            self.add_interaction("Poke", False, self.interactions_between, 0)
             self.interactions_between += 1
 
     ## Stimulus' ##
@@ -268,16 +267,19 @@ class TrialStateMachine:
         """
         Converts trial logs to JSON format and writes them to a file.
         """
+        load_dotenv()
+        pi_id = os.getenv("PI_ID")
+
         log_data = {
+            "pi_id": pi_id,
             "status": self.endStatus,
-            "start_time": time.strftime('%H:%M:%S', time.localtime(self.startTime)),
-            "end_time": time.strftime('%H:%M:%S', time.localtime(self.startTime + self.elapsed_time)),
+            "start_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.startTime)),
+            "end_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.startTime + self.elapsed_time)),
             "total_interactions": self.total_interactions,
-            "creation_date": self.startDate,
-            "interactions": [
+            "trial_entries": [
                 {
-                    "entry": entry[0],
-                    "interaction_time": entry[1],
+                    "entry_num": entry[0],
+                    "rel_time": entry[1],
                     "type": entry[2],
                     "reward": entry[3],
                     "interactions_between": entry[4],
@@ -288,10 +290,10 @@ class TrialStateMachine:
         }
 
         # Ensure log directory exists
-        if not os.path.exists(self.log_path):
-            os.makedirs(self.log_path)
+        if not os.path.exists(log_directory):
+            os.makedirs(log_directory)
 
-        log_filename = f"{self.log_path}/log_{time.strftime('%m_%d_%y_%H_%M_%S')}.json"
+        log_filename = f"{self.log_path}.json"
         with open(log_filename, 'w') as file:
             json.dump(log_data, file, indent=4)
 
