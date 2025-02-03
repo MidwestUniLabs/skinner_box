@@ -237,7 +237,7 @@
                     if (data.error) {
                         alert(`Error pushing log: ${data.error}`);
                     } else {
-                        alert("Log successfully pushed to the cloud!");
+                        showToast("Log successfully pushed to the cloud!", true);
                         pushButton.style.display = 'none';  // Hide button after successful push
                         showLocalLogs(); // Refresh local logs after deletion
                     }
@@ -248,6 +248,17 @@
                 });
         }
 
+        function showToast(message, success = true) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${success ? 'toast-success' : 'toast-error'}`;
+            toast.textContent = message;
+            document.getElementById('toast-container').appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
 
     </script>
 {% endblock %}
@@ -280,4 +291,5 @@
         <a id="download-excel-btn" href="">Download Excel Log</a>
         <a id="push-cloud-btn" href="javascript:pushLogToCloud();" style="display: none;">Push Log</a>
     </div>
+    <div id="toast-container"></div>
 {% endblock %}

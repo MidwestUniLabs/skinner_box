@@ -1,5 +1,4 @@
 # app/state_machine.py
-import csv
 import threading
 import json
 import os
@@ -89,7 +88,7 @@ class TrialStateMachine:
                 # YYYY_MM_DD_HH_MM_SS
                 safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
                 # Update log_path to include the date and time
-                self.log_path = log_directory + f"log_{safe_time_str}.csv"
+                self.log_path = log_directory + f"log_{safe_time_str}.json"
                 threading.Thread(target=self.run_trial, args=(goal, duration)).start()
                 self.give_stimulus()
                 return True
@@ -293,7 +292,7 @@ class TrialStateMachine:
         if not os.path.exists(log_directory):
             os.makedirs(log_directory)
 
-        log_filename = f"{self.log_path}.json"
+        log_filename = f"{self.log_path}"
         with open(log_filename, 'w') as file:
             json.dump(log_data, file, indent=4)
 

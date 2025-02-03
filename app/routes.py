@@ -12,7 +12,7 @@ from app import gpio
 import json
 from functools import wraps
 from flask import abort
-import app.trial_state_machine as statemachine  # Import the state machine
+import app.trial_state_machine as statemachine
 
 settings_path = app_config.settings_path
 log_directory = app_config.log_directory
@@ -71,9 +71,63 @@ def login_required(f):
         token_data = load_token()
         if not token_data or "access_token" not in token_data:
             print("Access denied. User not logged in.")
-            return abort(401)  # Unauthorized
+            return abort(401)
         return f(*args, **kwargs)
     return decorated_function
+
+def reauth_if_needed(func):
+    """
+    Decorator to refresh the access token if it has expired.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        token_data = load_token()  # Load stored tokens
+
+        if not token_data or "access_token" not in token_data:
+            return jsonify({"error": "Unauthorized - No access token found."}), 401
+
+        # Test the token by making a simple request
+        headers = {"Authorization": f"Bearer {token_data['access_token']}"}
+        test_response = requests.get(f"{CLOUD_RUN_URL}/test-auth", headers=headers)
+
+        if test_response.status_code == 401:  # Token expired, attempt refresh
+            print("Access token expired. Attempting reauthentication...")
+
+            if "refresh_token" not in token_data:
+                print("No refresh token available. User must log in again.")
+                return jsonify({"error": "No refresh token found. Please log in again."}), 401
+
+            # Send refresh token in Authorization header
+            reauth_response = requests.post(
+                f"{CLOUD_RUN_URL}/refresh",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {token_data['refresh_token']}"  # ✅ Send refresh token in header
+                }
+            )
+
+            if reauth_response.status_code == 200:
+                new_token_data = reauth_response.json().get("data", {})
+
+                if "access_token" in new_token_data:
+                    token_data["access_token"] = new_token_data["access_token"]
+                    save_token(token_data)  # ✅ Update stored token
+                    print("Reauthenticated successfully.")
+
+                    # ✅ Retry the original function now that we have a fresh token
+                    return func(*args, **kwargs)
+                else:
+                    print("Reauthentication failed: No new token received.")
+                    return jsonify({"error": "Reauthentication failed."}), 401
+            else:
+                print("Reauthentication request failed.")
+                return jsonify({"error": "Reauthentication request failed."}), 401
+
+        return func(*args, **kwargs)  # ✅ Proceed with the original request if no reauth needed
+
+    return wrapper
+
+
 #endregion
 
 #region Routes
@@ -87,7 +141,7 @@ def io_testing():
 
 @app.route('/test_io', methods=['POST'])
 def test_io():
-    data = request.get_json()  # Ensure correct JSON request handling
+    data = request.get_json()
     if not data or "action" not in data:
         return jsonify({"error": "Missing action parameter"}), 400
 
@@ -122,13 +176,13 @@ def test_io():
         elif action == 'lever':
             gpio.lever_press(trial_state_machine)
             if hasattr(statemachine, "log_manual_interaction"):
-                statemachine.log_manual_interaction("lever_press")  # Correctly calls state machine log
+                statemachine.log_manual_interaction("lever_press")
             return jsonify({"message": "Lever press logged"}), 200
 
         elif action == 'poke':
             gpio.nose_poke()
             if hasattr(statemachine, "log_manual_interaction"):
-                statemachine.log_manual_interaction("nose_poke")  # Correctly calls state machine log
+                statemachine.log_manual_interaction("nose_poke")
             return jsonify({"message": "Nose poke logged"}), 200
 
         else:
@@ -208,7 +262,7 @@ def log_viewer(): # Displays the log files in the log directory
     log_files = list_log_files_sorted(log_directory)  # Get sorted list of log files
     return render_template('logpage.html', log_files=log_files)
 
-@app.route('/download-raw-log/<filename>') 
+@app.route('/download-raw-log/<filename>')
 def download_raw_log_file(filename): # Download the raw log file
     filename = secure_filename(filename)  # Sanitize the filename
     try:
@@ -303,16 +357,18 @@ def view_log(filename):
     except Exception as e:
         print(f"Error reading log file: {e}")
         return jsonify({"error": "Error loading log content."}), 500
+#endregion
 
-
+#region External API Calls
 @app.route('/login_user', methods=['POST'])
 def login_user():
+    """
+    Log in the user and save both the access and refresh tokens.
+    """
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    """
-    Log in the user and save the JWT token for future use.
-    """
+
     try:
         response = requests.post(
             f'{CLOUD_RUN_URL}/login',
@@ -320,14 +376,17 @@ def login_user():
             headers={'Content-Type': 'application/json'}
         )
         response.raise_for_status()
+
         token_data = response.json().get("data", {})
-        if "access_token" in token_data and "username" in token_data:
-            save_token(token_data)  # Save the token to a file
+
+        if "access_token" in token_data and "refresh_token" in token_data and "username" in token_data:
+            save_token(token_data)  # Save access and refresh tokens
             print(f"Successfully logged in as {email}")
             return token_data
         else:
-            print("Login succeeded, but no token received.")
+            print("Login succeeded, but missing token data.")
             return {"error": "Login succeeded, but no token received."}, 400
+
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err} - Response: {response.text}")
         return {"error": str(http_err)}, 400
@@ -335,15 +394,53 @@ def login_user():
         print(f"Error logging in: {e}")
         return {"error": str(e)}, 500
 
+
 @app.route('/current_user', methods=['GET'])
 def current_user():
     token_data = load_token()
     if token_data and "access_token" in token_data:
         return {"current_user": token_data.get("username")}
     return {"current_user": None}
-#endregion
 
-#region External API Calls
+@app.route('/reauth_user', methods=['POST'])
+def reauth_user():
+    """
+    Refresh the user's access token using the stored refresh token.
+    """
+    token_data = load_token()
+    if not token_data or "refresh_token" not in token_data:
+        return {"error": "No refresh token found."}, 400
+
+    try:
+        response = requests.post(
+            f'{CLOUD_RUN_URL}/refresh',
+            json={},
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f"Bearer {token_data.get('refresh_token')}"
+            }
+        )
+        response.raise_for_status()
+
+        new_token_data = response.json().get("data", {})
+
+        if "access_token" in new_token_data:
+            token_data["access_token"] = new_token_data["access_token"]  # Update access token only
+            save_token(token_data)  # Save updated token data
+            print("Successfully refreshed token.")
+            return new_token_data
+        else:
+            print("Token refresh succeeded, but no token received.")
+            return {"error": "Token refresh succeeded, but no token received."}, 400
+
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err} - Response: {response.text}")
+        return {"error": str(http_err)}, 400
+    except Exception as e:
+        print(f"Error refreshing token: {e}")
+        return {"error": str(e)}, 500
+
+    
 @app.route('/logout_user', methods=['POST'])
 def logout_user():
     """
@@ -359,6 +456,7 @@ def logout_user():
 
 @app.route('/push_log', methods=['POST'])
 @login_required
+@reauth_if_needed
 def push_log():
     """
     Read a JSON trial log file, push it to the API, and delete it locally upon success.
@@ -424,6 +522,7 @@ def push_log():
 
 @app.route('/pull_user_logs', methods=['GET'])
 @login_required
+@reauth_if_needed
 def pull_user_logs():
     """
     Fetch logs for the current user from Cloud Run.
