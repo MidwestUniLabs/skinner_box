@@ -79,20 +79,24 @@
 
         function viewLocalLog(filename) {
             console.log(`Fetching local log content for: ${filename}`);
-            
-            document.getElementById('download-btn').href = `/download-raw-log/${encodeURIComponent(filename)}`;
-            document.getElementById('download-excel-btn').href = `/download-excel-log/${encodeURIComponent(filename)}`;
-            document.getElementById('download-btn').style.display = 'inline-block';
-            document.getElementById('download-excel-btn').style.display = 'inline-block';
+
+            const rawDownloadBtn = document.getElementById('download-btn');
+            const excelDownloadBtn = document.getElementById('download-excel-btn');
+
+            // Ensure correct file paths
+            rawDownloadBtn.setAttribute("data-filename", filename);
+            excelDownloadBtn.setAttribute("data-filename", filename);
+
+            rawDownloadBtn.style.display = 'inline-block';
+            excelDownloadBtn.style.display = 'inline-block';
             document.getElementById('push-cloud-btn').style.display = 'inline-block';
 
             fetch(`/view-log/${encodeURIComponent(filename)}`)
-                .then(response => response.json())  // Expecting JSON response
+                .then(response => response.json())
                 .then(trialInfo => {
                     console.log("Viewing local trial details:", trialInfo);
-
                     const logViewer = document.getElementById('log-viewer');
-                    logViewer.innerHTML = ''; // Clear existing content
+                    logViewer.innerHTML = '';
 
                     // Add trial summary details
                     const trialSummary = `
@@ -248,6 +252,32 @@
                 });
         }
 
+        function downloadFile(type) {
+            const filename = document.getElementById('download-btn').getAttribute("data-filename");
+
+            if (!filename) {
+                alert("No log selected for download.");
+                return;
+            }
+
+            let downloadUrl = "";
+            if (type === 'raw') {
+                downloadUrl = `/download-raw-log/${encodeURIComponent(filename)}`;
+            } else if (type === 'excel') {
+                downloadUrl = `/download-excel-log/${encodeURIComponent(filename)}`;
+            }
+
+            console.log(`Downloading file from: ${downloadUrl}`);
+
+            // Trigger file download
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function showToast(message, success = true) {
             const toast = document.createElement('div');
             toast.className = `toast ${success ? 'toast-success' : 'toast-error'}`;
@@ -271,13 +301,17 @@
                 <a id="local-log-btn" href="javascript:showLocalLogs();" style="width: 25%; display: none;">Local</a>
             </div>
             <div id="remote-logs" style="display: none;">
-                <p>Loading remote logs...</p>
+                <div class="loader">
+                    <span class="loader-text">loading</span>
+                    <span class="load"></span>
+                </div>
             </div>
             <div id="local-logs" style="display: none;">
                 {% for log_file in log_files %}
                     <a onclick="viewLocalLog('{{ log_file }}')">{{ log_file }}</a>
                 {% endfor %}
             </div>
+            
             <div id="LoginWarning" style="display: none;">
                 <p style="color: #3700B3;">Remote Log Viewer is only available to logged-in users.</p>
             </div>
@@ -286,10 +320,34 @@
             <p>Log Viewer:</p>
         </div>
     </div>
-    <div id="download-buttons" style="display: block;">
-        <a id="download-btn" href="">Download Raw Log</a>
-        <a id="download-excel-btn" href="">Download Excel Log</a>
-        <a id="push-cloud-btn" href="javascript:pushLogToCloud();" style="display: none;">Push Log</a>
+    <div id="download-buttons" class="button-container" style="display: block;">
+        <!-- 📄 Download Raw Log -->
+        <button class="cssbuttons-io-button" id="download-btn" style="display: none;" onclick="downloadFile('raw')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                <path fill="none" d="M0 0h24v24H0z"></path>
+                <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h7v5h5v11H6z"></path>
+            </svg>
+            <span>Download Raw Log</span>
+        </button>
+
+        <!-- 📊 Download Excel Log -->
+        <button class="cssbuttons-io-button" id="download-excel-btn" style="display: none;" onclick="downloadFile('excel')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                <path fill="none" d="M0 0h24v24H0z"></path>
+                <path fill="currentColor" d="M4 4h16v16H4z" opacity=".3"></path>
+                <path fill="currentColor" d="M4 4v16h16V4H4zm2 14V6h12v12H6zm6-5.5l-1.41-1.41-2.12 2.12-2.12-2.12L5.5 12.5l2.12 2.12-2.12 2.12L7.59 17l2.12-2.12L11.83 17l1.41-1.41-2.12-2.12 2.12-2.12z"></path>
+            </svg>
+            <span>Download Excel Log</span>
+        </button>
+
+        <!-- ☁️ Push Log to Cloud -->
+        <button class="cssbuttons-io-button" id="push-cloud-btn" style="display: none" onclick="pushLogToCloud();">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                <path fill="none" d="M0 0h24v24H0z"></path>
+                <path fill="currentColor" d="M19.35 10.04A7.49 7.49 0 0012 4 7.5 7.5 0 004.65 10.04 5.998 5.998 0 000 16c0 3.31 2.69 6 6 6h12c3.31 0 6-2.69 6-6 0-2.53-1.56-4.75-3.65-5.96zM11 13v4h2v-4h3l-4-4-4 4h3z"></path>
+            </svg>
+            <span>Push Log</span>
+        </button>
     </div>
     <div id="toast-container"></div>
 {% endblock %}
