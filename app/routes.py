@@ -1,12 +1,11 @@
 # app/routes.py
-import csv
 import os
 from flask import render_template, request, jsonify, redirect, send_file, send_from_directory, url_for
 import requests
 from app import app, app_config, gpio
 from app.trial_state_machine import TrialStateMachine
 from main import list_log_files_sorted, load_settings, save_settings, trial_state_machine
-from werkzeug.utils import secure_filename, safe_join
+from werkzeug.utils import secure_filename
 from openpyxl import Workbook
 from app import gpio
 import json
@@ -31,6 +30,14 @@ def save_token(data):
     with open(TOKEN_FILE, "w") as file:
         json.dump(data, file)
 
+def delete_token():
+    """
+    Delete the token file to log out the user.
+    """
+    if os.path.exists(TOKEN_FILE):
+        os.remove(TOKEN_FILE)
+
+#region TODO Condense into one function
 def load_uname():
     """
     Load the token from the file if it exists.
@@ -57,13 +64,7 @@ def load_token():
         with open(TOKEN_FILE, "r") as file:
             return json.load(file)
     return None
-
-def delete_token():
-    """
-    Delete the token file to log out the user.
-    """
-    if os.path.exists(TOKEN_FILE):
-        os.remove(TOKEN_FILE)
+#endregion
 
 def login_required(f):
     @wraps(f)
@@ -127,14 +128,15 @@ def reauth_if_needed(func):
 
     return wrapper
 
-
 #endregion
 
-#region Routes
+#region Home Page
 @app.route('/')
 def homepage():
     return render_template('homepage.html')
+#endregion Home Page
 
+#region Testing Page
 @app.route('/testingpage')
 def io_testing():
     return render_template('testingpage.html')
@@ -191,14 +193,9 @@ def test_io():
     except Exception as e:
         print(f"Error processing action {action}: {e}")
         return jsonify({"error": f"Failed to execute {action}"}), 500
-    
-@app.route("/pin_status")
-def pin_status():
-    # Collect the statuses of your GPIO components
-    statuses = gpio.gpio_states
-    # Return the statuses as a JSON response
-    return jsonify(statuses)
+#endregion Testing Page
 
+#region Trial Page
 @app.route('/trial', methods=['POST'])
 def trial():
     settings = load_settings()  # Load settings
@@ -208,6 +205,27 @@ def trial():
         settings = load_settings()  # Load settings
         # Perform operations based on settings...
         return render_template('trialsettingspage.html', settings=settings) #TODO change to trialsettings
+
+@app.route('/manuallyEndTrial', methods=['POST'])
+def manuallyEndTrial(): # Stops the trial
+    if trial_state_machine.finish_trial("Manually Ended"):
+        return redirect(url_for('trial_settings'))
+    return redirect(url_for('trial_settings'))
+#endregion Trial Page
+
+#region Trial Settings
+@app.route('/trial-settings', methods=['GET'])
+def trial_settings(): # Displays the trial settings with the settings loaded from the file
+    settings = load_settings()
+    return render_template('trialsettingspage.html', settings=settings)
+
+@app.route('/update-trial-settings', methods=['POST'])
+def update_trial_settings(): # Updates the trial settings with the form data
+    settings = load_settings()
+    for key in request.form:
+        settings[key] = request.form[key]
+    save_settings(settings)
+    return redirect(url_for('trial_settings'))
 
 @app.route('/start', methods=['POST'])
 def start():
@@ -223,27 +241,9 @@ def start():
         if trial_state_machine.start_trial():
             return render_template('runningtrialpage.html', settings=settings)
         return render_template('trialsettingspage.html', settings=settings)
+#endregion Trial Settings
 
-@app.route('/manuallyEndTrial', methods=['POST'])
-def manuallyEndTrial(): # Stops the trial
-    if trial_state_machine.finish_trial("Manually Ended"):
-        return redirect(url_for('trial_settings'))
-    return redirect(url_for('trial_settings'))
-
-@app.route('/trial-settings', methods=['GET'])
-def trial_settings(): # Displays the trial settings with the settings loaded from the file
-    settings = load_settings()
-    return render_template('trialsettingspage.html', settings=settings)
-
-@app.route('/update-trial-settings', methods=['POST'])
-def update_trial_settings(): # Updates the trial settings with the form data
-    settings = load_settings()
-    for key in request.form:
-        settings[key] = request.form[key]
-    save_settings(settings)
-    return redirect(url_for('trial_settings'))
-
-@app.route('/trial-status')
+@app.route('/trial-status') #TODO Is this used?
 def trial_status(): # Returns the current status of the trial
     global trial_state_machine
     try:
@@ -257,6 +257,7 @@ def trial_status(): # Returns the current status of the trial
     except:
         return
 
+#region Log Viewer Page
 @app.route('/log-viewer', methods=['GET', 'POST'])
 def log_viewer(): # Displays the log files in the log directory
     log_files = list_log_files_sorted(log_directory)  # Get sorted list of log files
@@ -357,102 +358,6 @@ def view_log(filename):
     except Exception as e:
         print(f"Error reading log file: {e}")
         return jsonify({"error": "Error loading log content."}), 500
-#endregion
-
-#region External API Calls
-@app.route('/login_user', methods=['POST'])
-def login_user():
-    """
-    Log in the user and save both the access and refresh tokens.
-    """
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-
-    try:
-        response = requests.post(
-            f'{CLOUD_RUN_URL}/login',
-            json={'email': email, 'password': password},
-            headers={'Content-Type': 'application/json'}
-        )
-        response.raise_for_status()
-
-        token_data = response.json().get("data", {})
-
-        if "access_token" in token_data and "refresh_token" in token_data and "username" in token_data:
-            save_token(token_data)  # Save access and refresh tokens
-            print(f"Successfully logged in as {email}")
-            return token_data
-        else:
-            print("Login succeeded, but missing token data.")
-            return {"error": "Login succeeded, but no token received."}, 400
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err} - Response: {response.text}")
-        return {"error": str(http_err)}, 400
-    except Exception as e:
-        print(f"Error logging in: {e}")
-        return {"error": str(e)}, 500
-
-
-@app.route('/current_user', methods=['GET'])
-def current_user():
-    token_data = load_token()
-    if token_data and "access_token" in token_data:
-        return {"current_user": token_data.get("username")}
-    return {"current_user": None}
-
-@app.route('/reauth_user', methods=['POST'])
-def reauth_user():
-    """
-    Refresh the user's access token using the stored refresh token.
-    """
-    token_data = load_token()
-    if not token_data or "refresh_token" not in token_data:
-        return {"error": "No refresh token found."}, 400
-
-    try:
-        response = requests.post(
-            f'{CLOUD_RUN_URL}/refresh',
-            json={},
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f"Bearer {token_data.get('refresh_token')}"
-            }
-        )
-        response.raise_for_status()
-
-        new_token_data = response.json().get("data", {})
-
-        if "access_token" in new_token_data:
-            token_data["access_token"] = new_token_data["access_token"]  # Update access token only
-            save_token(token_data)  # Save updated token data
-            print("Successfully refreshed token.")
-            return new_token_data
-        else:
-            print("Token refresh succeeded, but no token received.")
-            return {"error": "Token refresh succeeded, but no token received."}, 400
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err} - Response: {response.text}")
-        return {"error": str(http_err)}, 400
-    except Exception as e:
-        print(f"Error refreshing token: {e}")
-        return {"error": str(e)}, 500
-
-    
-@app.route('/logout_user', methods=['POST'])
-def logout_user():
-    """
-    Log out the user by deleting their token.
-    """
-    try:
-        delete_token()  # Deletes the auth_token.json file
-        print("User logged out successfully.")
-        return {"message": "User logged out successfully."}, 200
-    except Exception as e:
-        print(f"Error logging out user: {e}")
-        return {"error": "Failed to log out user."}, 500
 
 @app.route('/push_log', methods=['POST'])
 @login_required
@@ -465,21 +370,20 @@ def push_log():
     if not token_data or "username" not in token_data:
         return jsonify({"error": "Invalid authentication token."}), 403
 
-    # Ensure file is uploaded
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part in the request."}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file."}), 400
+    # Get the filename from the form data (no file upload required)
+    filename = request.form.get('file')
+    if not filename:
+        return jsonify({"error": "No file selected."}), 400
 
-    # Secure filename and save temporarily
-    filename = secure_filename(file.filename)
-    temp_filepath = os.path.join(temp_directory, filename)
-    file.save(temp_filepath)
+    # Secure the filename and get its full path
+    filename = secure_filename(filename)
+    file_path = os.path.join(log_directory, filename)
+    if not os.path.exists(file_path):
+        return jsonify({"error": f"File '{filename}' not found."}), 404
 
     try:
         # Read JSON log file
-        with open(temp_filepath, 'r') as log_file:
+        with open(file_path, 'r') as log_file:
             trial_data = json.load(log_file)
 
         # Ensure required fields exist
@@ -493,34 +397,31 @@ def push_log():
             if not all(field in entry for field in required_entry_fields):
                 return jsonify({"error": "Invalid entry format. Missing required fields."}), 400
 
-        # Attach UID to ensure the trial is linked to the user
+        # Attach UID to ensure the trial is linked to the correct user
         trial_data["uid"] = token_data.get("uid")
 
-        # Send request to Cloud Run API
+        # Send the request to the Cloud Run API
         headers = {'Authorization': f"Bearer {token_data.get('access_token')}"}
         response = requests.post(f'{CLOUD_RUN_URL}/trials/push', json=trial_data, headers=headers)
 
         # Handle response
         if response.status_code in [200, 201]:
-            local_log_path = os.path.join(log_directory, filename)
-            if os.path.exists(local_log_path):
-                os.remove(local_log_path)
-                print(f"Deleted local log after push: {local_log_path}")
+            os.remove(file_path)  # Delete the file after successful push
+            print(f"Deleted local log after push: {file_path}")
             return jsonify({"message": "Log pushed successfully and deleted locally.", "response": response.json()}), response.status_code
         else:
+            app.logger.error(f"Failed to push log: {response.text}")
             return jsonify({"error": "Failed to push log to API", "api_response": response.text}), response.status_code
 
-
+    except json.JSONDecodeError as e:
+        app.logger.error(f'Error decoding JSON: {e}')
+        return jsonify({"error": "Invalid JSON format in log file."}), 400
     except Exception as e:
         app.logger.error(f'Error processing log file: {e}')
-        return jsonify({"error": "An error occurred while processing the log."}), 500
+        return jsonify({"error": "An unexpected error occurred while processing the log."}), 500
 
-    finally:
-        # Clean up temporary file
-        if os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
 
-@app.route('/pull_user_logs', methods=['GET'])
+@app.route('/pull_user_logs', methods=['GET']) #TODO Sort by newest (by default)
 @login_required
 @reauth_if_needed
 def pull_user_logs():
@@ -578,7 +479,7 @@ def pull_user_logs():
         print(f"Error processing user logs: {e}")
         return {"error": str(e)}, 500
 
-@app.route('/list_local_logs', methods=['GET'])
+@app.route('/list_local_logs', methods=['GET']) #TODO Sort by newest (by default)
 def list_local_logs():
     """
     List all local log files in the log directory.
@@ -589,6 +490,101 @@ def list_local_logs():
     except Exception as e:
         print(f"Error listing local logs: {e}")
         return jsonify({"error": "Failed to list local logs."}), 500
+#endregion Log Viewer Page
+
+#region User Authentication
+@app.route('/login_user', methods=['POST'])
+def login_user():
+    """
+    Log in the user and save both the access and refresh tokens.
+    """
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    try:
+        response = requests.post(
+            f'{CLOUD_RUN_URL}/login',
+            json={'email': email, 'password': password},
+            headers={'Content-Type': 'application/json'}
+        )
+        response.raise_for_status()
+
+        token_data = response.json().get("data", {})
+
+        if "access_token" in token_data and "refresh_token" in token_data and "username" in token_data:
+            save_token(token_data)  # Save access and refresh tokens
+            print(f"Successfully logged in as {email}")
+            return token_data
+        else:
+            print("Login succeeded, but missing token data.")
+            return {"error": "Login succeeded, but no token received."}, 400
+
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err} - Response: {response.text}")
+        return {"error": str(http_err)}, 400
+    except Exception as e:
+        print(f"Error logging in: {e}")
+        return {"error": str(e)}, 500
+
+@app.route('/current_user', methods=['GET'])
+def current_user():
+    token_data = load_token()
+    if token_data and "access_token" in token_data:
+        return {"current_user": token_data.get("username")}
+    return {"current_user": None}
+
+@app.route('/reauth_user', methods=['POST'])
+def reauth_user():
+    """
+    Refresh the user's access token using the stored refresh token.
+    """
+    token_data = load_token()
+    if not token_data or "refresh_token" not in token_data:
+        return {"error": "No refresh token found."}, 400
+
+    try:
+        response = requests.post(
+            f'{CLOUD_RUN_URL}/refresh',
+            json={},
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f"Bearer {token_data.get('refresh_token')}"
+            }
+        )
+        response.raise_for_status()
+
+        new_token_data = response.json().get("data", {})
+
+        if "access_token" in new_token_data:
+            token_data["access_token"] = new_token_data["access_token"]  # Update access token only
+            save_token(token_data)  # Save updated token data
+            print("Successfully refreshed token.")
+            return new_token_data
+        else:
+            print("Token refresh succeeded, but no token received.")
+            return {"error": "Token refresh succeeded, but no token received."}, 400
+
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err} - Response: {response.text}")
+        return {"error": str(http_err)}, 400
+    except Exception as e:
+        print(f"Error refreshing token: {e}")
+        return {"error": str(e)}, 500
+
+@app.route('/logout_user', methods=['POST'])
+def logout_user():
+    """
+    Log out the user by deleting their token.
+    """
+    try:
+        delete_token()  # Deletes the auth_token.json file
+        print("User logged out successfully.")
+        return {"message": "User logged out successfully."}, 200
+    except Exception as e:
+        print(f"Error logging out user: {e}")
+        return {"error": "Failed to log out user."}, 500
+
 
 # def Pull_User_Data(username) :#TODO This should only be accessible when the user is logged in and should get the username from that
 #     # Pull user data from Cloud Run

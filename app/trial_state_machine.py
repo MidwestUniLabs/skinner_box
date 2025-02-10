@@ -7,7 +7,7 @@ from app import gpio
 from dotenv import load_dotenv
 from app.app_config import log_directory
 
-class TrialStateMachine:
+class TrialStateMachine: #TODO Clean up the code
     """
     A state machine to manage the trial process in a behavioral experiment.
     Attributes:
