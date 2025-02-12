@@ -90,7 +90,7 @@
             // Highlight selected log
             const allLogs = document.querySelectorAll('.log-item');
             allLogs.forEach(log => log.classList.remove('selected'));
-            const selectedLog = Array.from(allLogs).find(log => log.textContent === filename);
+            const selectedLog = Array.from(allLogs).find(log => log.getAttribute('data-filename') === filename);
             if (selectedLog) selectedLog.classList.add('selected');
 
             // Show buttons
@@ -196,6 +196,7 @@
 
         function showLocalLogs() {
             const logViewer = document.getElementById('log-viewer');
+
             logViewer.innerHTML = ''; // Clear existing content
             fetch('/list_local_logs')
                 .then(response => response.json())
@@ -206,7 +207,18 @@
                     data.log_files.forEach(log_file => {
                         const logElement = document.createElement('a');
                         logElement.className = 'log-item';
-                        logElement.textContent = log_file;
+                        const dateParts = log_file.replace('log_', '').replace('.json', '').split(/[_\/]/);
+                        const month = parseInt(dateParts[0], 10) - 1;
+                        const day = parseInt(dateParts[1], 10);
+                        const year = parseInt(dateParts[2], 10);
+                        formattedYear = year < 100 ? year + 2000 : year;
+                        const hours = parseInt(dateParts[3], 10);
+                        const minutes = parseInt(dateParts[4], 10);
+                        const seconds = parseInt(dateParts[5], 10);
+
+                        const formattedDate = new Date(formattedYear, month, day, hours, minutes, seconds).toLocaleString();
+                        logElement.textContent = formattedDate;
+                        logElement.setAttribute('data-filename', log_file);
                         logElement.href = "#";  // Prevent page reload
                         logElement.onclick = function () {
                             console.log(`Clicked log: ${log_file}`);
@@ -214,7 +226,6 @@
                         };
                         localLogsContainer.appendChild(logElement);
                     });
-
 
                     console.log("Local logs loaded:", data.log_files); // Debugging log
 

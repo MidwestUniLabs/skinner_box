@@ -147,11 +147,6 @@ class TrialStateMachine: #TODO Clean up the code
             if self.currentIteration >= goal: # Goal reached
                 self.elapsed_time = round(self.elapsed_time, 2)
 
-                # **Ensure last interaction is recorded**
-                if self.interactable:
-                    print("Recording final interaction before finishing.")
-                    self.add_interaction("Final", "N/A", self.interactions_between, self.time_between)
-
                 self.finish_trial(endStatus="Goal Reached")
                 break
 
@@ -301,8 +296,6 @@ class TrialStateMachine: #TODO Clean up the code
     def finish_trial(self, endStatus):
         with self.lock:
             if self.state == 'Running':
-                if self.interactable:  # Ensuring the last interaction is logged
-                    self.add_interaction("Final", "N/A", self.interactions_between, self.time_between)
                 self.state = 'Completed'
                 self.endStatus = endStatus
                 self.push_log()
