@@ -166,6 +166,9 @@
                 remoteLogsContainer.innerHTML = ''; // Clear existing content
                 console.log('Remote logs data:', data); // Debugging log
 
+                // Sort logs by newest date and time first
+                data.data.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+
                 data.data.forEach(trial => {
                     const trialElement = document.createElement('a');
                     trialElement.className = 'log-item';  // Add the log-item class for consistent styling
@@ -204,19 +207,45 @@
                     const localLogsContainer = document.getElementById('local-logs');
                     localLogsContainer.innerHTML = ''; // Clear existing content
 
+                    if (data.log_files.length === 0) {
+                        const noLogsMessage = document.createElement('p');
+                        noLogsMessage.textContent = 'No local logs available.';
+                        noLogsMessage.className = 'no-logs-message';
+                        document.getElementById('local-logs').appendChild(noLogsMessage);
+                        return;
+                    }
+
+                    // Sort logs by newest date and time first
+                    data.log_files.sort((a, b) => {
+                        const datePartsA = a.replace('log_', '').replace('.json', '').split(/[_\/]/);
+                        const datePartsB = b.replace('log_', '').replace('.json', '').split(/[_\/]/);
+
+                        const yearA = parseInt(datePartsA[2], 10) < 100 ? parseInt(datePartsA[2], 10) + 2000 : parseInt(datePartsA[2], 10);
+                        const yearB = parseInt(datePartsB[2], 10) < 100 ? parseInt(datePartsB[2], 10) + 2000 : parseInt(datePartsB[2], 10);
+
+                        const dateA = new Date(yearA, parseInt(datePartsA[0], 10) - 1, parseInt(datePartsA[1], 10),
+                            parseInt(datePartsA[3], 10), parseInt(datePartsA[4], 10), parseInt(datePartsA[5], 10));
+
+                        const dateB = new Date(yearB, parseInt(datePartsB[0], 10) - 1, parseInt(datePartsB[1], 10),
+                            parseInt(datePartsB[3], 10), parseInt(datePartsB[4], 10), parseInt(datePartsB[5], 10));
+
+                        return dateB - dateA;  // Sort newest to oldest
+                    });
+
+                    // Display logs
                     data.log_files.forEach(log_file => {
                         const logElement = document.createElement('a');
                         logElement.className = 'log-item';
+
                         const dateParts = log_file.replace('log_', '').replace('.json', '').split(/[_\/]/);
                         const month = parseInt(dateParts[0], 10) - 1;
                         const day = parseInt(dateParts[1], 10);
-                        const year = parseInt(dateParts[2], 10);
-                        formattedYear = year < 100 ? year + 2000 : year;
+                        const year = parseInt(dateParts[2], 10) < 100 ? parseInt(dateParts[2], 10) + 2000 : parseInt(dateParts[2], 10);
                         const hours = parseInt(dateParts[3], 10);
                         const minutes = parseInt(dateParts[4], 10);
                         const seconds = parseInt(dateParts[5], 10);
 
-                        const formattedDate = new Date(formattedYear, month, day, hours, minutes, seconds).toLocaleString();
+                        const formattedDate = new Date(year, month, day, hours, minutes, seconds).toLocaleString();
                         logElement.textContent = formattedDate;
                         logElement.setAttribute('data-filename', log_file);
                         logElement.href = "#";  // Prevent page reload
@@ -228,7 +257,6 @@
                     });
 
                     console.log("Local logs loaded:", data.log_files); // Debugging log
-
                 })
                 .catch(error => {
                     console.error('Error fetching local logs:', error);
@@ -239,13 +267,14 @@
             document.getElementById('remote-log-btn').style.backgroundColor = 'transparent';
             document.getElementById('local-logs').style.display = 'block';
             document.getElementById('local-log-btn').style.backgroundColor = '#6200EE';
-            
+
             document.getElementById('download-btn').href = '';
             document.getElementById('download-btn').style.display = 'none';
             document.getElementById('download-excel-btn').href = '';
             document.getElementById('download-excel-btn').style.display = 'none';
             document.getElementById('push-cloud-btn').style.display = 'none';
         }
+
 
         function pushLogToCloud() {
             const filename = document.getElementById('download-btn').getAttribute("data-filename");
@@ -384,7 +413,7 @@
     </div>
 
     <!-- Log Viewer Section -->
-    <div id="log-viewer" class="flex-item log-viewer">
+    <div id="log-viewer" class="flex-item log-viewer-container">
         <div class="flex-container">
             <h3>Log Viewer:</h3>
         </div>

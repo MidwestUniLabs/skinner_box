@@ -1,29 +1,7 @@
-/* Main Container */
-#container {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 20px;
-    width: 100%;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
 /* Flex Items */
 .flex-item {
     flex: 1;
     min-width: 0;
-}
-
-/* Log List Section */
-.log-list-section {
-    display: flex;
-    flex-direction: column;
-    max-width: 30%;
-    max-height: 600px;
-    border: 1px solid #444;
-    border-radius: 5px;
-    overflow: hidden; /* Ensure it doesn't overflow */
 }
 
 /* Log Buttons */
@@ -78,6 +56,18 @@
     cursor: pointer;
     white-space: normal; /* Allow wrapping */
 }
+.no-logs-message {
+    display: block;
+    padding: 8px 12px;
+    margin: 5px 0;
+    font-size: 16px;
+    color: #b72f0d;
+    text-decoration: none;
+    border-radius: 3px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    cursor: pointer;
+    white-space: normal; /* Allow wrapping */
+}
 
 .log-item:hover {
     background-color: #3700b3;
@@ -90,26 +80,12 @@
     font-weight: bold;
 }
 
-/* Log Viewer Section */
-.log-viewer {
-    flex: 1.5; /* Larger than the list */
-    padding: 20px;
-    background: #111;
-    border: 1px solid #444;
-    border-radius: 5px;
-    color: white;
-    max-height: 600px;
-    overflow-y: auto;
-}
-
 /* Download Buttons */
 .button-group {
     display: flex;
     justify-content: space-between;
     padding: 10px;
 }
-
-
 
 /* Base */
 body {
@@ -148,9 +124,37 @@ h1 {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
-    background-color: #1E1E1E;
-    border-radius: 8px;
+    /* background-color: #1E1E1E; */
+    border: 1px solid #444;
     box-sizing: border-box;
+}
+#container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 20px;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.log-list-section {
+    display: flex;
+    flex-direction: column;
+    max-width: 30%;
+    max-height: 600px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    overflow: hidden; /* Ensure it doesn't overflow */
+}
+.log-viewer-container {
+    flex: 1.5; /* Larger than the list */
+    padding: 20px;
+    background: #111;
+    border: 1px solid #444;
+    border-radius: 5px;
+    color: white;
+    max-height: 600px;
+    overflow-y: auto;
 }
 
 /* Card Component */
