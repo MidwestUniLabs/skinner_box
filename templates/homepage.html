@@ -40,13 +40,14 @@
                     <div class="container">
                         <label for="uname"><b>Username</b></label>
                         <input type="text" placeholder="Enter Username" name="uname" required>
+                        <br><br>
                         <label for="psw"><b>Password</b></label>
                         <input type="password" placeholder="Enter Password" name="psw" required>
-                        <button id="login-btn" type="submit">Login</button>
-                        <div class="loader" style="display: none;">
-                            <span class="loader-text">loading</span>
-                            <span class="load"></span>
-                        </div>
+                        <br><br>
+                        <button id="login-btn" type="submit">
+                            <div id="spinner" class="loader_btn_spinner" style="display: none;"></div>
+                            <div id="login_btn_txt">Login</div>
+                        </button>
                     </div>
                     <div class="container">
                         <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Cancel</button>

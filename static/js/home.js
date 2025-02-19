@@ -27,8 +27,15 @@ function showToast(message, success = true) {
 }
 
 function loginUser(event) {
-    document.getElementsByClassName('loader')[0].style.display = 'flex';
-    document.getElementById('login-btn').style.display = 'none';
+    login_btn = document.getElementById('login-btn');
+    spinner = document.getElementById('spinner');
+    btn_text = document.getElementById('login_btn_txt');
+
+    login_btn.className = "loader_btn";
+    btn_text.textContent = 'Loading...';
+    spinner.style.display = 'inline-block';
+
+    
     event.preventDefault();
     const formData = new FormData(event.target);
     const data = {
@@ -50,8 +57,9 @@ function loginUser(event) {
         } else {
             showToast('Login failed', false);
         }
-        document.getElementsByClassName('loader')[0].style.display = 'none';
-        document.getElementById('login-btn').style.display = 'inline-block';
+    login_btn.className = "button";
+    btn_text.textContent = 'Login';
+    spinner.style.display = 'none';
     });
 }
 
