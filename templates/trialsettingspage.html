@@ -56,12 +56,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector("form[action='{{ url_for('update_trial_settings') }}']");
-        form.addEventListener('change', function() {
-            form.submit();
-        });
-    });
-</script>
+<script src="{{ url_for('static', filename='js/trialsettings.js') }}"></script>
 {% endblock %}
