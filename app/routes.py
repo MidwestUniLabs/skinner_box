@@ -320,6 +320,7 @@ def download_excel_log_file(filename):
                 entry.get("time_between", "N/A"),
             ])
 
+        #TODO The temp file is not being deleted
         # Save the workbook to a temporary file
         temp_filename = f'{filename.rsplit(".", 1)[0]}.xlsx'
         temp_filepath = os.path.join(temp_directory, temp_filename)
