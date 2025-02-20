@@ -37,9 +37,11 @@ matplotlib==3.8.4
 Mock.GPIO==0.1.8
 multidict==6.0.5
 networkx==3.2.1
+Nuitka==2.6.6
 numpy==1.26.4
 opencv-python==4.9.0.80
 openpyxl==3.1.5
+ordered-set==4.1.0
 packaging==24.0
 pillow==10.3.0
 pluggy==1.5.0
@@ -73,3 +75,4 @@ urllib3==2.2.1
 Werkzeug==3.0.2
 wheel==0.44.0
 yarl==1.9.4
+zstandard==0.23.0
