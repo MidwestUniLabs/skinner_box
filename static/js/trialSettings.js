@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector("form[action='{{ url_for('update_trial_settings') }}']");
-    form.addEventListener('change', function() {
-        form.submit();
-    });
+    const form = document.querySelector("form[action='/update-trial-settings']");
+    if (form) {
+        form.addEventListener('change', function() {
+            form.submit();
+        });
+    }
 });

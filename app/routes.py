@@ -2,7 +2,7 @@
 import os
 from flask import render_template, request, jsonify, redirect, send_file, send_from_directory, url_for
 import requests
-from app import app, app_config, gpio
+from app import app_config, gpio, app
 from app.trial_state_machine import TrialStateMachine
 from main import list_log_files_sorted, load_settings, save_settings, trial_state_machine
 from werkzeug.utils import secure_filename
