@@ -65,6 +65,52 @@ jobs:
           echo "No tests yet; skipping."
 
       # Create a release
+name: Build and Release with Nuitka
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile code with Nuitka
+        run: |
+          python -m nuitka \
+            --onefile \
+            --follow-imports \
+            --jobs=2 \
+            main.py
+
+      - name: List artifacts
+        run: ls -al
+
       # 1) Create a short SHA output
       - name: Generate short SHA
         id: short_sha
@@ -82,12 +128,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
-      # Upload the Nuitka-compiled binary to the release
       - name: Upload compiled binary
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./skinnerBox-run
-          asset_name: skinnerBox-run
+          asset_path: ./main  # or whatever Nuitka created
+          asset_name: main
           asset_content_type: application/octet-stream
