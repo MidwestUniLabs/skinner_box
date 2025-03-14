@@ -33,14 +33,14 @@ jobs:
       # Compile code with Nuitka
       - name: Compile code with Nuitka
         run: |
-          # Example: compile your main Python script, e.g. "skinner_box.py"
+          # Example: compile your main Python script, e.g. "skinnerBox.py"
           python -m nuitka --onefile skinnerBox.py
-          # After this, Nuitka should produce a binary (e.g. skinner_box.exe on Windows or skinner_box on Linux)
+          # After this, Nuitka should produce a binary (e.g. skinnerBox.exe on Windows or skinnerBox on Linux)
 
       # Optional: Test the compiled binary
       - name: Test compiled binary
         run: |
-          ./skinner_box --help
+          ./skinnerBox --help
 
       # Create a release
       - name: Create a GitHub release
@@ -59,6 +59,6 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./skinner_box
-          asset_name: skinner_box
+          asset_path: ./skinnerBox
+          asset_name: skinnerBox
           asset_content_type: application/octet-stream
