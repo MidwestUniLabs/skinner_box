@@ -23,19 +23,29 @@ jobs:
         with:
           python-version: "3.9"
 
-      # Install Nuitka (and other dependencies if required)
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install nuitka
-          # If you have other dependencies, install them here too
+          pip install -r requirements.txt
+
 
       # Compile code with Nuitka
       - name: Compile code with Nuitka
         run: |
-          # Example: compile your main Python script, e.g. "skinnerBox.py"
-          python -m nuitka --onefile --output-filename=skinnerBox-run skinnerBox.py
+          # Compile main Python script, "skinnerBox.py"
+          python -m nuitka \
+          --onefile \
+          --follow-imports \
+          --include-data-dir=templates=templates \
+          --include-data-dir=static=static \
+          --output-filename=skinnerBox-run \
+          main.py
+
           # After this, Nuitka should produce a binary (e.g. skinnerBox.exe on Windows or skinnerBox on Linux)
+
+      - name: List artifacts (debug)
+        run: ls -al
+
 
       # Optional: Test the compiled binary
       - name: Test compiled binary
