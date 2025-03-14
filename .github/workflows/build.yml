@@ -69,12 +69,13 @@ jobs:
         id: create_release
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ github.sha }}
-          release_name: Release ${{ github.ref }}
+          tag_name: v0.1-${{ github.sha:0:7 }}
+          release_name: "Release for ${{ github.ref }}"
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       # Upload the Nuitka-compiled binary to the release
       - name: Upload compiled binary
