@@ -40,7 +40,7 @@ function loginUser(event) {
     const formData = new FormData(event.target);
     const data = {
         email: formData.get('uname'),
-        password: formData.get('psw')
+        password: formData.get('psw') // TODO hash and salt password here somehow
     };
 
     fetch('/login_user', {
@@ -50,16 +50,16 @@ function loginUser(event) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.access_token) {
+        if (data.message === "Login successful") {
             document.getElementById('id01').style.display = 'none';
             showToast('Login successful!', true);
             setTimeout(() => location.reload(), 2000);
         } else {
             showToast('Login failed', false);
         }
-    login_btn.className = "button";
-    btn_text.textContent = 'Login';
-    spinner.style.display = 'none';
+        login_btn.className = "button";
+        btn_text.textContent = 'Login';
+        spinner.style.display = 'none';
     });
 }
 
