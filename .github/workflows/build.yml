@@ -1,0 +1,64 @@
+name: Build and Release with Nuitka
+
+on:
+  # Run automatically on pushes to `main`
+  push:
+    branches: [ main ]
+
+  # Allow manual runs on other branches
+  workflow_dispatch:
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out your repository
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # (Optional) Set up Python if needed
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      # Install Nuitka (and other dependencies if required)
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install nuitka
+          # If you have other dependencies, install them here too
+
+      # Compile code with Nuitka
+      - name: Compile code with Nuitka
+        run: |
+          # Example: compile your main Python script, e.g. "skinner_box.py"
+          python -m nuitka --onefile skinner_box.py
+          # After this, Nuitka should produce a binary (e.g. skinner_box.exe on Windows or skinner_box on Linux)
+
+      # Optional: Test the compiled binary
+      - name: Test compiled binary
+        run: |
+          ./skinner_box --help
+
+      # Create a release
+      - name: Create a GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.sha }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload the Nuitka-compiled binary to the release
+      - name: Upload compiled binary
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./skinner_box
+          asset_name: skinner_box
+          asset_content_type: application/octet-stream
