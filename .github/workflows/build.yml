@@ -9,23 +9,24 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  # Needed to create a GitHub release
 
 jobs:
   build_and_release:
     runs-on: ubuntu-latest
 
     steps:
-      # Check out your repository
+      # 1) Check out your repository
       - name: Check out code
         uses: actions/checkout@v3
 
-      # (Optional) Set up Python if needed
+      # 2) Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.9"
 
+      # 3) Cache pip
       - name: Cache pip
         uses: actions/cache@v3
         with:
@@ -34,89 +35,36 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      # 4) Install dependencies
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Compile code with Nuitka
-      - name: Compile code with Nuitka
-        run: |
-          # Compile main Python script, "skinnerBox.py"
-          python -m nuitka \
-          --onefile \
-          --follow-imports \
-          --include-data-dir=templates=templates \
-          --include-data-dir=static=static \
-          --include-package-data=limits \
-          --output-filename=skinnerBox-run \
-          --jobs=2 \
-          main.py
-
-          # After this, Nuitka should produce a binary (e.g. skinnerBox.exe on Windows or skinnerBox on Linux)
-
-      - name: List artifacts (debug)
-        run: ls -al
-
-
-      # Optional: Test the compiled binary
-      - name: Test compiled binary
-        run: |
-          echo "No tests yet; skipping."
-
-      # Create a release
-name: Build and Release with Nuitka
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  build_and_release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-
-      - name: Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
+      # 5) Compile code with Nuitka
       - name: Compile code with Nuitka
         run: |
           python -m nuitka \
             --onefile \
             --follow-imports \
             --jobs=2 \
-            main.py
+            --include-data-dir=templates=templates \
+            --include-data-dir=static=static \
+            --include-package-data=limits \
+            --output-filename=skinnerBox-run \
+            skinnerBox.py
+          # If your script is named main.py, replace skinnerBox.py with main.py
 
-      - name: List artifacts
+      # 6) Optional debug listing
+      - name: List artifacts (debug)
         run: ls -al
 
-      # 1) Create a short SHA output
+      # 7) Generate short SHA (so you don't use a 40-char invalid tag)
       - name: Generate short SHA
         id: short_sha
         run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
 
-      # 2) Create a release with that short SHA in the tag
+      # 8) Create a GitHub release
       - name: Create a GitHub release
         id: create_release
         uses: actions/create-release@v1
@@ -128,10 +76,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # 9) Upload the Nuitka-compiled binary to the release
       - name: Upload compiled binary
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./main  # or whatever Nuitka created
-          asset_name: main
+          asset_path: ./skinnerBox-run    # Must match the actual Nuitka output name
+          asset_name: skinnerBox-run
           asset_content_type: application/octet-stream
