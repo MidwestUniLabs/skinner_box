@@ -34,7 +34,7 @@ jobs:
       - name: Compile code with Nuitka
         run: |
           # Example: compile your main Python script, e.g. "skinner_box.py"
-          python -m nuitka --onefile skinnerbox.py
+          python -m nuitka --onefile skinnerBox.py
           # After this, Nuitka should produce a binary (e.g. skinner_box.exe on Windows or skinner_box on Linux)
 
       # Optional: Test the compiled binary
