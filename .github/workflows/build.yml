@@ -73,7 +73,7 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
 
       # 9) Upload the Nuitka-compiled binary to the release
       - name: Upload compiled binary
