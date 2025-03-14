@@ -38,6 +38,7 @@ jobs:
           --follow-imports \
           --include-data-dir=templates=templates \
           --include-data-dir=static=static \
+            --include-package-data=limits \
           --output-filename=skinnerBox-run \
           main.py
 
