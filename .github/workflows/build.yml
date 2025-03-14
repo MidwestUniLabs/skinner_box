@@ -65,12 +65,18 @@ jobs:
           echo "No tests yet; skipping."
 
       # Create a release
+      # 1) Create a short SHA output
+      - name: Generate short SHA
+        id: short_sha
+        run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+
+      # 2) Create a release with that short SHA in the tag
       - name: Create a GitHub release
         id: create_release
         uses: actions/create-release@v1
         with:
-          tag_name: v0.1-${{ github.sha:0:7 }}
-          release_name: "Release for ${{ github.ref }}"
+          tag_name: v0.1-${{ steps.short_sha.outputs.SHORT_SHA }}
+          release_name: "Release ${{ steps.short_sha.outputs.SHORT_SHA }}"
           draft: false
           prerelease: false
         env:
