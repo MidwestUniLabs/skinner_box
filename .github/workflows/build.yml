@@ -52,9 +52,8 @@ jobs:
             --include-data-dir=static=static \
             --include-package-data=limits \
             --output-filename=skinnerBox-run \
-            skinnerBox.py
-          # If your script is named main.py, replace skinnerBox.py with main.py
-
+            main.py
+            
       # 6) Optional debug listing
       - name: List artifacts (debug)
         run: ls -al
