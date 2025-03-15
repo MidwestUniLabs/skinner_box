@@ -68,7 +68,7 @@ jobs:
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BUILD_SECRET }}
         with:
           tag_name: v0.1-${{ steps.short_sha.outputs.SHORT_SHA }}
           release_name: "Release v0.1-${{ steps.short_sha.outputs.SHORT_SHA }}"
