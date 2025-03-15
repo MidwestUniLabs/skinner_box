@@ -65,11 +65,11 @@ jobs:
 
       # 8) Create a GitHub release
       - name: Create a GitHub release
-        id: create_release
         uses: actions/create-release@v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v0.1-${{ steps.short_sha.outputs.SHORT_SHA }}
-          release_name: "Release ${{ steps.short_sha.outputs.SHORT_SHA }}"
+          release_name: "Release 0.1"
           draft: false
           prerelease: false
 
