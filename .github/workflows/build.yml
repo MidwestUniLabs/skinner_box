@@ -58,10 +58,10 @@ jobs:
       - name: List artifacts (debug)
         run: ls -al
 
-      # 7) Generate short SHA (so you don't use a 40-char invalid tag)
-      - name: Generate short SHA
-        id: short_sha
-        run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+      # 7) Add this step to generate a unique tag name
+      - name: Generate unique tag name
+        id: unique_tag
+        run: echo "UNIQUE_TAG=v0.1-${GITHUB_SHA:0:7}-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
 
       # 8) Create a GitHub release
       - name: Create a GitHub release
@@ -70,8 +70,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.BUILD_SECRET }}
         with:
-          tag_name: v0.1-${{ steps.short_sha.outputs.SHORT_SHA }}
-          release_name: "Release v0.1-${{ steps.short_sha.outputs.SHORT_SHA }}"
+          tag_name: ${{ steps.unique_tag.outputs.UNIQUE_TAG }}
+          release_name: "Release ${{ steps.unique_tag.outputs.UNIQUE_TAG }}"
           draft: false
           prerelease: false
 
