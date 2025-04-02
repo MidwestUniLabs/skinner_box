@@ -132,25 +132,23 @@ class TrialStateMachine: #TODO Clean up the code
             gpio.poke.when_pressed = self.nose_poke
 
         while self.state == 'Running':
-            # Ensure `timeRemaining` updates correctly
             self.elapsed_time = time.time() - self.startTime
             self.timeRemaining = max(0, round(duration - self.elapsed_time, 2))
-
-            # Re-stimulate if no interaction has occurred within the cooldown time
+            
             cooldown_time = float(self.settings.get('cooldown', 0))
-            if self.interactable and (self.elapsed_time - self.lastStimulusTime) >= cooldown_time:
-                print("No interaction in last cooldown period, Re-Stimming")
+            # Updated stimulus trigger time check to use absolute times
+            if self.interactable and (time.time() - self.lastStimulusTime) >= cooldown_time:
+                print("No interaction in last cooldown period, Re-Stimulating")
                 self.give_stimulus()
-                self.lastStimulusTime = self.elapsed_time  # Update stimulus time
-
+                self.lastStimulusTime = time.time()
+            
             # **Check if trial should finish**
-            if self.currentIteration >= goal: # Goal reached
+            if self.currentIteration >= goal:  # Goal reached
                 self.elapsed_time = round(self.elapsed_time, 2)
-
                 self.finish_trial(endStatus="Goal Reached")
                 break
 
-            elif self.timeRemaining <= 0: # Time limit reached
+            elif self.timeRemaining <= 0:  # Time limit reached
                 self.elapsed_time = round(self.elapsed_time, 2)
                 self.finish_trial(endStatus="Time Limit Reached")
                 break
