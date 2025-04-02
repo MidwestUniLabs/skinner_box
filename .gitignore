@@ -22,4 +22,4 @@ __pycache__/
 # Other
 auth_token.json
 app/trial_config.json
-fernet_key.secure
+*.secure
