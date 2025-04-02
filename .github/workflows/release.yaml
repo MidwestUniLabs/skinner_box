@@ -145,7 +145,7 @@ jobs:
       - name: Dispatch Repository Dispatch event
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.BREW_TAP_TOKEN }}
+          token: ${{ secrets.REPO_DISPATCH_TOKEN }}
           repository: ${{ env.OWNER }}/{{ env.TAP_NAME }}
           event-type: "update-formula"
           client-payload: |-
