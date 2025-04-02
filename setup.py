@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 # Extract the version from __init__.py
 def get_version():
-    with open("skinnerbox_source/__init__.py", "r") as init_file:
+    with open("app/__init__.py", "r") as init_file:
         for line in init_file:
             match = re.match(r"^__version__ = ['\"]([^'\"]+)['\"]", line)
             if match:
