@@ -107,9 +107,24 @@ jobs:
         run: |
           gh release create ${{ needs.update_version.outputs.tag_name }} dist/* --title "Version ${{ needs.update_version.outputs.new_version }}" --generate-notes
 
-  trigger_pypi_release:
-    name: Trigger PyPI Release
+  pypi_publish:
+    name: Upload release to PyPI
     needs: [setup_and_build, update_version, github_release]
-    uses: ./.github/workflows/release.yaml
-    with:
-      tag_name: ${{ needs.update_version.outputs.tag_name }}
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+      url: https://pypi.org/p/skinnerbox-source
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
