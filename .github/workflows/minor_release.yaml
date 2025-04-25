@@ -73,6 +73,8 @@ jobs:
 
       - name: Build source and wheel distribution
         run: |
+          # Update setup.py to ensure unique package name for this specific version
+          VERSION=${{ needs.update_version.outputs.new_version }}
           python setup.py sdist bdist_wheel
 
       - name: Upload artifacts
@@ -117,14 +119,38 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
+      - name: Debug Publisher Info
+        run: |
+          echo "==== PUBLISHER CONFIGURATION INFO ===="
+          echo "Owner: MidwestUniLabs"
+          echo "Repository: skinner_box"
+          echo "Workflow filename: .github/workflows/minor_release.yaml"
+          echo "Environment: release"
+          echo "Use these EXACT values in PyPI trusted publisher configuration"
+          echo "======================================="
+          
+      - name: Debug Package Info
+        run: |
+          echo "==== PACKAGE INFO ===="
+          echo "Publishing version: ${{ needs.update_version.outputs.new_version }}"
+          echo "Tag name: ${{ needs.update_version.outputs.tag_name }}"
+          echo "================="
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
+          
+      - name: List distribution files
+        run: |
+          echo "==== DISTRIBUTION FILES ===="
+          ls -la dist/
+          echo "=========================="
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
           verbose: true
+          skip-existing: true
