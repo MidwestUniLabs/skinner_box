@@ -112,5 +112,4 @@ jobs:
     needs: [setup_and_build, update_version, github_release]
     uses: ./.github/workflows/release.yaml
     with:
-      version: ${{ needs.update_version.outputs.new_version }}
       tag_name: ${{ needs.update_version.outputs.tag_name }}
