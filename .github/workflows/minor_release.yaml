@@ -66,19 +66,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify version file
-        run: |
-          echo "==== VERIFYING VERSION FILE ===="
-          VERSION_FILE_CONTENT=$(cat version.txt)
-          echo "Version in version.txt: $VERSION_FILE_CONTENT"
-          echo "Expected version: ${{ needs.update_version.outputs.new_version }}"
-          if [ "$VERSION_FILE_CONTENT" != "${{ needs.update_version.outputs.new_version }}" ]; then
-            echo "ERROR: Version mismatch. version.txt contains $VERSION_FILE_CONTENT but expected ${{ needs.update_version.outputs.new_version }}"
-            exit 1
-          fi
-          echo "Version file verified successfully"
-          echo "============================="
-
       - name: Install dependencies from requirements.txt
         run: |
           python -m pip install --upgrade pip
@@ -91,27 +78,7 @@ jobs:
 
       - name: Build source and wheel distribution
         run: |
-          echo "Building version ${{ needs.update_version.outputs.new_version }}"
           python -m build --sdist --wheel
-          
-      - name: Verify built packages
-        run: |
-          echo "==== VERIFYING BUILT PACKAGES ===="
-          ls -la dist/
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
-          if [[ -z "$WHEEL_FILE" ]]; then
-            echo "ERROR: No wheel file found in dist directory!"
-            exit 1
-          fi
-          
-          FILENAME=$(basename "$WHEEL_FILE")
-          echo "Wheel filename: $FILENAME"
-          if [[ "$FILENAME" != *"${{ needs.update_version.outputs.new_version }}"* ]]; then
-            echo "ERROR: Version ${{ needs.update_version.outputs.new_version }} not found in wheel filename $FILENAME"
-            exit 1
-          fi
-          echo "Built packages verified successfully"
-          echo "==============================="
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -153,87 +120,16 @@ jobs:
       name: release
       url: https://pypi.org/p/skinnerbox-source
     permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
     steps:
-      - name: Debug Publisher Info
-        run: |
-          echo "==== PUBLISHER CONFIGURATION INFO ===="
-          echo "Owner: MidwestUniLabs"
-          echo "Repository: skinner_box"
-          echo "Workflow filename: .github/workflows/minor_release.yaml"
-          echo "Environment: release"
-          echo "Use these EXACT values in PyPI trusted publisher configuration"
-          echo "======================================="
-          
-      - name: Debug Package Info
-        run: |
-          echo "==== PACKAGE INFO ===="
-          echo "Publishing version: ${{ needs.update_version.outputs.new_version }}"
-          echo "Tag name: ${{ needs.update_version.outputs.tag_name }}"
-          echo "================="
-
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
-          
-      - name: List distribution files
-        run: |
-          echo "==== DISTRIBUTION FILES ===="
-          ls -la dist/
-          echo "=========================="
-          
-      - name: Verify package version in wheel
-        run: |
-          echo "==== VERIFYING PACKAGE VERSION ===="
-          # Extract version from wheel filename
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
-          echo "Wheel file: $WHEEL_FILE"
-          if [[ -z "$WHEEL_FILE" ]]; then
-            echo "ERROR: No wheel file found in dist directory!"
-            exit 1
-          fi
-          
-          # Extract the version from the filename (assuming format package_name-version-py3-none-any.whl)
-          FILENAME=$(basename "$WHEEL_FILE")
-          VERSION_IN_FILENAME=$(echo "$FILENAME" | cut -d'-' -f2)
-          
-          echo "Version in filename: $VERSION_IN_FILENAME"
-          echo "Expected version: ${{ needs.update_version.outputs.new_version }}"
-          
-          # Check if versions match
-          if [[ "$VERSION_IN_FILENAME" != "${{ needs.update_version.outputs.new_version }}" ]]; then
-            echo "WARNING: Version in wheel filename ($VERSION_IN_FILENAME) doesn't match expected version (${{ needs.update_version.outputs.new_version }})"
-            echo "This might cause release issues on PyPI."
-          else
-            echo "Version in wheel matches expected version."
-          fi
-          echo "====================================="
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
-          verbose: true
           skip-existing: true
-      
-      - name: Verify PyPI release
-        if: success()
-        run: |
-          echo "==== VERIFYING PYPI RELEASE ===="
-          echo "Waiting 30 seconds for PyPI to index the package..."
-          sleep 30
-          
-          # Try to check if the package is available on PyPI
-          echo "Attempting to query PyPI for version ${{ needs.update_version.outputs.new_version }}..."
-          PYPI_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/skinnerbox-source/${{ needs.update_version.outputs.new_version }}/json")
-          
-          if [ "$PYPI_STATUS" == "200" ]; then
-            echo "SUCCESS: Version ${{ needs.update_version.outputs.new_version }} found on PyPI!"
-          else
-            echo "WARNING: Version ${{ needs.update_version.outputs.new_version }} not found on PyPI (HTTP status: $PYPI_STATUS)"
-            echo "This could be due to PyPI indexing delay or the package wasn't uploaded."
-            echo "Check the PyPI publishing step for any warnings about skipped files."
-          fi
-          echo "==========================="
