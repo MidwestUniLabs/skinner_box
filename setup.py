@@ -1,18 +1,12 @@
-import re
 from setuptools import setup, find_packages
 
-# Extract the version from __init__.py
-def get_version():
-    with open("app/__init__.py", "r") as init_file:
-        for line in init_file:
-            match = re.match(r"^__version__ = ['\"]([^'\"]+)['\"]", line)
-            if match:
-                return match.group(1)
-    raise RuntimeError("Version not found in __init__.py")
+# Read version from version.txt
+with open("version.txt", "r") as f:
+    version = f.read().strip()
 
 setup(
     name="Skinnerbox-Source",
-    version=get_version(),  # Dynamically set the version
+    version=version,
     description="Source Code for the Skinner Box by Midwest UniLabs",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

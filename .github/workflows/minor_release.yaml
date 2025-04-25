@@ -66,16 +66,52 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify version file
+        run: |
+          echo "==== VERIFYING VERSION FILE ===="
+          VERSION_FILE_CONTENT=$(cat version.txt)
+          echo "Version in version.txt: $VERSION_FILE_CONTENT"
+          echo "Expected version: ${{ needs.update_version.outputs.new_version }}"
+          if [ "$VERSION_FILE_CONTENT" != "${{ needs.update_version.outputs.new_version }}" ]; then
+            echo "ERROR: Version mismatch. version.txt contains $VERSION_FILE_CONTENT but expected ${{ needs.update_version.outputs.new_version }}"
+            exit 1
+          fi
+          echo "Version file verified successfully"
+          echo "============================="
+
       - name: Install dependencies from requirements.txt
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install build wheel
+
+      - name: Clean previous builds
+        run: |
+          rm -rf dist/ build/ *.egg-info/
 
       - name: Build source and wheel distribution
         run: |
-          # Update setup.py to ensure unique package name for this specific version
-          VERSION=${{ needs.update_version.outputs.new_version }}
-          python setup.py sdist bdist_wheel
+          echo "Building version ${{ needs.update_version.outputs.new_version }}"
+          python -m build --sdist --wheel
+          
+      - name: Verify built packages
+        run: |
+          echo "==== VERIFYING BUILT PACKAGES ===="
+          ls -la dist/
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          if [[ -z "$WHEEL_FILE" ]]; then
+            echo "ERROR: No wheel file found in dist directory!"
+            exit 1
+          fi
+          
+          FILENAME=$(basename "$WHEEL_FILE")
+          echo "Wheel filename: $FILENAME"
+          if [[ "$FILENAME" != *"${{ needs.update_version.outputs.new_version }}"* ]]; then
+            echo "ERROR: Version ${{ needs.update_version.outputs.new_version }} not found in wheel filename $FILENAME"
+            exit 1
+          fi
+          echo "Built packages verified successfully"
+          echo "==============================="
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
