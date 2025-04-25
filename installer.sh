@@ -1,21 +1,29 @@
 #!/bin/bash
 
-#Check to make sure packages are installed
-ensure_package_installed() {
-    PACKAGE_NAME=$1
-    pip show $PACKAGE_NAME &> /dev/null
-    if [ $? -ne 0 ]; then
-        echo "Python package $PACKAGE_NAME is not installed. Installing..."
-        sudo pip install $PACKAGE_NAME --break-system-packages
-    else
-        echo "Python package $PACKAGE_NAME is installed."
-    fi
-}
+# Check if requirements.txt exists
+if [ ! -f "requirements.txt" ]; then
+    echo "Error: requirements.txt not found!"
+    exit 1
+fi
 
-#List of required packages
-required_packages=("flask" "rpi_ws281x" "gpiozero" "pandas openpyxl" "pandas")
+# Check if virtual environment folder exists
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+fi
 
-for package in "${required_packages[@]}"; do
-	ensure_package_installed $package
-done
+# Activate the virtual environment
+source venv/bin/activate
 
+# Upgrade pip
+echo "Upgrading pip..."
+pip install --upgrade pip
+
+# Install packages from requirements.txt
+echo "Installing packages from requirements.txt..."
+pip install -r requirements.txt
+
+# Deactivate virtual environment
+deactivate
+
+echo "Installation complete!"

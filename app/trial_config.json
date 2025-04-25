@@ -1,0 +1,9 @@
+{
+    "duration": "10",
+    "goal": "6",
+    "cooldown": "5",
+    "rewardType": "food",
+    "interactionType": "lever",
+    "stimulusType": "light",
+    "light-color": "#bf6ebd"
+}

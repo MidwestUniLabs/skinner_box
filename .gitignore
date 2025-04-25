@@ -7,7 +7,7 @@ env.bak/
 venv.bak/
 logs/
 temp/
-
+dist/
 # Python
 ######################
 *.py[cod]
@@ -19,3 +19,7 @@ __pycache__/
 # Visual Studio Code
 .vscode/
 
+# Other
+auth_token.json
+*.secure
+app/trial_config.json

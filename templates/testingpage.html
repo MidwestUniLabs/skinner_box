@@ -1,26 +1,37 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block head %}
-<title>I/O Testing</title>
+    <title>Skinnerbox - I/O Testing</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 {% endblock %}
 
-{% block body %}
-<h1>I/O Testing Page</h1>
-    <form action="/test_io" method="post">
+{% block content %}
+    <div class="container" style="display: block; text-align: center;">
+        <h2>I/O Testing</h2>
+
+        <div class="mock-banner" id="mockBanner">
+            <p>⚠️ WARNING: Running in **MOCK MODE** - No real GPIO changes will be made.</p>
+            <button class="close-btn" onclick="document.getElementById('mockBanner').style.display='none'">X</button>
+        </div>
         
-        <h3>Test Stimulus</h3>
-        <button type="submit" name="action" value="sound">Sound</button>
-        <button type="submit" name="action" value="light">Light</button>
-        <br>
 
-        <h3>Test Input</h3>
-        <button type="submit" name="action" value="lever_press">Lever Press</button>
-        <button type="submit" name="action" value="nose_poke">Nose Poke</button>
-        <br>
+        <div class="buttons">
+            <button class="button" value="feeder">Feed</button>
+            <button class="button" value="water">Water</button>
+            <button class="button" value="buzzer">Sound Buzzer</button>
+            <button class="button" value="light">Light Stimulus</button>
+            <button class="button" value="lever">Lever Press</button>
+            <button class="button" value="poke">Nose Poke</button>
+        </div>
+    </div>
 
-        <h3>Test Output</h3>
-        <button type="submit" name="action" value="feed">Feed</button>
-        <button type="submit" name="action" value="water">Water</button>
-    </form> 
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
 {% endblock %}
 
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/testing.js') }}"></script>
+{% endblock %}

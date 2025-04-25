@@ -13,9 +13,12 @@ from werkzeug.utils import secure_filename, safe_join
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-settings_path = 'config.json'
+settings_path = 'trial_config.json'
 log_directory = '/home/jacob/Downloads/skinner_box-main/logs/'
 temp_directory = '/home/jacob/Downloads/skinner_box-main/temp/'
+
+#TODO Split the code into multiple files (Flask, Database, and main)
+
 
 #region Databse
 def get_db_connection():
@@ -125,7 +128,7 @@ def water():
     try:
         water_motor = OutputDevice(water_port, active_high=False, initial_value=False)
         water_motor.on()
-        time.sleep(.15) #TODO Adjust Water Time
+        time.sleep(.15) #TODO Adjust Water Time with settings
         water_motor.off()
         water_motor.close()
     finally:
@@ -158,7 +161,7 @@ def flashLightStim(strip, color, wait_ms=10):
             strip.show()
             time.sleep(wait_ms/1000.0)
 
-def play_sound(pin, duration): #TODO
+def play_sound(pin, duration): #TODO 
 	print("Playing sound")
 	#buzzer.on
 	time.sleep(duration) # Wait a predetermained amount of time
@@ -236,7 +239,7 @@ def test_io():
 	if action == 'water':
 		water()
 	if action == 'light':
-		flashLightStim(strip, Color(255, 255, 255)) #TODO Change to settings
+		flashLightStim(strip, Color(255, 255, 255)) #TODO Change to settings color
 	if action == 'sound':
 		play_sound(speaker_port, 1)
 	if action == 'lever_press':
@@ -439,7 +442,7 @@ class TrialStateMachine:
     def load_settings(self):
         # Implementation of loading settings from file
         try:
-            with open('config.json', 'r') as file:
+            with open('trial_config.json', 'r') as file:
                 self.settings = json.load(file)
         except FileNotFoundError:
             self.settings = {}
@@ -649,4 +652,5 @@ if __name__ == '__main__':
     # Call the function to ensure naming is correct
     rename_log_files() # Rename log files with spaces and colons to underscores. Probably not needed in production, mostly used in testing.
     # Start the Flask app
+    #TODO Get the IP address of the Pi and send it to the db for remote access
     app.run(debug=False, use_reloader=False, host='0.0.0.0')

@@ -1,95 +1,654 @@
+/* Flex Items */
+.flex-item {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Log Buttons */
+.log-buttons {
+    display: flex;
+    justify-content: space-evenly;
+    padding: 10px;
+    border-bottom: 1px solid #444;
+}
+
+.log-toggle-button {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    margin: 0 5px;
+    color: white;
+    background: #6200EE;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.log-toggle-button:hover {
+    background: #3700B3;
+}
+
+/* Log List */
+.log-list {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.log-list-items {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    max-height: 400px;
+    overflow-y: auto;  /* Scroll if content exceeds height */
+}
+
+.log-item {
+    display: block;
+    padding: 8px 12px;
+    margin: 5px 0;
+    font-size: 16px;
+    color: #bb86fc; /* Soft purple for the text */
+    text-decoration: none;
+    border-radius: 3px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    cursor: pointer;
+    white-space: normal; /* Allow wrapping */
+}
+.no-logs-message {
+    display: block;
+    padding: 8px 12px;
+    margin: 5px 0;
+    font-size: 16px;
+    color: #b72f0d;
+    text-decoration: none;
+    border-radius: 3px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    cursor: pointer;
+    white-space: normal; /* Allow wrapping */
+}
+
+.log-item:hover {
+    background-color: #3700b3;
+    color: #ffffff;
+}
+
+.log-item.selected {
+    background-color: #03dac6; /* Highlight color for the selected log */
+    color: #000000;
+    font-weight: bold;
+}
+
+/* Download Buttons */
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+}
+
 /* Base */
 body {
-        background-color: #121212; /* Dark background */
-        color: #E0E0E0; /* Light text */
-        font-family: 'Arial', sans-serif;
-    }
-    
-    a {
-        color: #BB86FC; /* Soft purple for links */
-        text-decoration: none;
-    }
-    
-    a:hover {
-        text-decoration: underline;
-    }
-    
-    /* Containers */
-    .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #1E1E1E; /* Slightly lighter than body for contrast */
-        border-radius: 8px;
-    }
-    
-    /* Headers */
-    h1, h2, h3, h4, h5, h6 {
-        color: #FFFFFF; /* Pure white for headers */
-    }
-    
-    /* Buttons */
-    .button {
-        background-color: #3700B3; /* Deep purple */
-        color: #FFFFFF;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-    
-    .button:hover {
-        background-color: #6200EE; /* Brighter purple */
-    }
-    
-    /* Forms */
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    textarea {
-        width: 100%;
+    background-color: #121212;
+    color: #E0E0E0;
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+a {
+    color: #BB86FC;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    color: #FFFFFF;
+}
+
+h1 {
+    text-align: center;
+}
+
+/* Containers */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    /* background-color: #1E1E1E; */
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+#container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 20px;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.log-list-section {
+    display: flex;
+    flex-direction: column;
+    max-width: 30%;
+    max-height: 600px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    overflow: hidden; /* Ensure it doesn't overflow */
+}
+.log-viewer-container {
+    flex: 1.5; /* Larger than the list */
+    padding: 20px;
+    background: #111;
+    border: 1px solid #444;
+    border-radius: 5px;
+    color: white;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* Card Component */
+.card {
+    background-color: #242424;
+    color: #E0E0E0;
+    padding: 20px;
+    margin-top: 20px;
+    border-radius: 8px;
+}
+
+/* Forms */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.form-row label {
+    text-align: right;
+    padding-right: 10px;
+}
+
+.form-row input[type="number"],
+.form-row input[type="color"],
+.form-row select,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+    width: 100%;
+    padding: 8px;
+    background-color: #333333;
+    color: #E0E0E0;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.form-row input[type="color"] {
+    padding: 0;
+    height: 35px;
+}
+
+.form-row input:focus {
+    outline: none;
+    border-color: #6200EE;
+}
+
+/* Buttons */
+.button, input[type="submit"], .LoginLogout button {
+    background-color: #3700B3;
+    color: #FFFFFF;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button:hover, input[type="submit"]:hover, .LoginLogout button:hover {
+    background-color: #6200EE;
+}
+
+/* Footer */
+footer {
+    background-color: #1E1E1E;
+    color: #E0E0E0;
+    text-align: center;
+    padding: 20px;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+/* Scroll bar styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+/* Download Buttons */
+.button-container {
+    display: flex;
+    justify-content: center;
+    text-align: left;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.cssbuttons-io-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-family: inherit;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 0em 1em;
+    color: white;
+    border: none;
+    letter-spacing: 0.03em;
+    border-radius: 15em;
+    min-width: 110px;
+    height: 34px;
+}
+
+.cssbuttons-io-button svg {
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+}
+
+.cssbuttons-io-button span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+#download-btn {
+    background: linear-gradient(0deg, rgba(0, 100, 255, 1) 0%, rgba(90, 170, 255, 1) 100%);
+    box-shadow: 0 0.5em 1.2em -0.5em rgba(0, 100, 255, 0.5);
+}
+
+#download-excel-btn {
+    background: linear-gradient(0deg, rgba(0, 170, 90, 1) 0%, rgba(90, 255, 130, 1) 100%);
+    box-shadow: 0 0.5em 1.2em -0.5em rgba(0, 170, 90, 0.5);
+}
+
+#push-cloud-btn {
+    background: linear-gradient(0deg, rgba(220, 50, 50, 1) 0%, rgba(255, 90, 90, 1) 100%);
+    box-shadow: 0 0.5em 1.2em -0.5em rgba(220, 50, 50, 0.5);
+}
+
+.cssbuttons-io-button:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+.cssbuttons-io-button:active {
+    opacity: 0.75;
+    transform: translateY(1px);
+}
+
+/* Log Location Buttons */
+#local-log-btn, #remote-log-btn {
+    display: none;
+    margin-top: 10px;
+    padding: 8px 15px;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+/* LoginLogout Container */
+.LoginLogout {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    justify-content: center;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: #1E1E1E;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    border-radius: 8px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    padding-right: 10px;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Toast Notification */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+.toast {
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    text-align: center;
+    min-width: 250px;
+    max-width: 400px;
+    color: white;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.toast-success {
+    background-color: #4CAF50;
+}
+
+.toast-error {
+    background-color: #f44336;
+}
+
+.fade-out {
+    opacity: 0;
+}
+
+/* GPIO Status Indicators */
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.status-indicator.on {
+    background-color: green;
+}
+
+.status-indicator.off {
+    background-color: red;
+}
+
+/* Mock Mode Warning */
+.mock-banner {
+    background-color: #ffcc00;
+    color: black;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    border: 2px solid black;
+    font-size: 16px;
+    position: relative;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    animation: pulse 1.5s infinite alternate;
+}
+
+.mock-banner .close-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: black;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.mock-banner .close-btn:hover {
+    background: red;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+@media (max-width: 768px) {
+    .mock-banner {
+        font-size: 14px;
         padding: 10px;
-        margin: 8px 0;
-        display: inline-block;
-        border: 1px solid #333;
-        border-radius: 4px;
-        box-sizing: border-box;
-        background-color: #333333; /* Dark input fields */
-        color: #E0E0E0; /* Light text for inputs */
     }
-    
-    input[type="submit"] {
-        background-color: #3700B3; /* Deep purple */
-        color: white;
-        padding: 14px 20px;
-        margin: 8px 0;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
+    .mock-banner .close-btn {
+        font-size: 14px;
+        padding: 4px 8px;
     }
-    
-    input[type="submit"]:hover {
-        background-color: #6200EE;
+}
+
+/* Bar Loader */
+.bar-loader {
+    width: 80px;
+    height: 50px;
+    position: relative;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.bar-loader-text {
+    position: absolute;
+    top: 0;
+    padding: 0;
+    margin: 0;
+    color: #C8B6FF;
+    animation: text_713 3.5s ease both infinite;
+    font-size: .8rem;
+    letter-spacing: 1px;
+}
+
+.bar-load {
+    background-color: #9A79FF;
+    border-radius: 50px;
+    display: block;
+    height: 16px;
+    width: 16px;
+    bottom: 0;
+    position: absolute;
+    transform: translateX(64px);
+    animation: loading_713 3.5s ease both infinite;
+}
+
+.bar-load::before {
+    position: absolute;
+    content: "";
+    width: 100%;
+    height: 100%;
+    background-color: #D1C2FF;
+    border-radius: inherit;
+    animation: loading2_713 3.5s ease both infinite;
+}
+
+@keyframes text_713 {
+    0% {
+        letter-spacing: 1px;
+        transform: translateX(0px);
     }
-    
-    /* Card Component */
-    .card {
-        background-color: #242424; /* Card background */
-        color: #E0E0E0;
-        padding: 20px;
-        margin-top: 20px;
-        border-radius: 8px;
+    40% {
+        letter-spacing: 2px;
+        transform: translateX(26px);
     }
-    
-    /* Footer */
-    footer {
-        background-color: #1E1E1E; /* Slightly lighter than body for contrast */
-        color: #E0E0E0;
-        text-align: center;
-        padding: 20px;
-        position: relative;
-        bottom: 0;
+    80% {
+        letter-spacing: 1px;
+        transform: translateX(32px);
+    }
+    90% {
+        letter-spacing: 2px;
+        transform: translateX(0px);
+    }
+    100% {
+        letter-spacing: 1px;
+        transform: translateX(0px);
+    }
+}
+
+@keyframes loading_713 {
+    0% {
+        width: 16px;
+        transform: translateX(0px);
+    }
+    40% {
+        width: 100%;
+        transform: translateX(0px);
+    }
+    80% {
+        width: 16px;
+        transform: translateX(64px);
+    }
+    90% {
+        width: 100%;
+        transform: translateX(0px);
+    }
+    100% {
+        width: 16px;
+        transform: translateX(0px);
+    }
+}
+
+@keyframes loading2_713 {
+    0% {
+        transform: translateX(0px);
+        width: 16px;
+    }
+    40% {
+        transform: translateX(0%);
+        width: 80%;
+    }
+    80% {
+        width: 100%;
+        transform: translateX(0px);
+    }
+    90% {
+        width: 80%;
+        transform: translateX(15px);
+    }
+    100% {
+        transform: translateX(0px);
+        width: 16px;
+    }
+}
+
+/* Button Loader */
+.loader_btn {
+    border: none;
+    background-color: white;
+    padding: 10px 20px 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: rgba(0, 0, 0, 0.7);
+    font-size: 16px;
+    border-radius: 4px;
+    --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color),
+    0 8px 10px -6px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+    cursor: wait;
+    margin: 0 auto;
+}
+
+.loader_btn_spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: transparent;
+    border-radius: 50%;
+}
+
+.loader_btn_spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: transparent;
+    width: 18px;
+    height: 18px;
+    animation: spin89345 1s linear infinite;
+}
+
+@keyframes spin89345 {
+    0% {
+    transform: rotate(0deg);
+    }
+
+    100% {
+    transform: rotate(360deg);
+    }
+}
+
+/* Dot Loader */
+.dot-loader {
+    display: block;
+    --height-of-loader: 4px;
+    --loader-color: #0071e2;
+    width: 130px;
+    height: var(--height-of-loader);
+    border-radius: 30px;
+    background-color: rgba(0,0,0,0.2);
+    position: relative;
+}
+
+.dot-loader::before {
+    content: "";
+    position: absolute;
+    background: var(--loader-color);
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 100%;
+    border-radius: 30px;
+    animation: moving 1s ease-in-out infinite;
+}
+
+@keyframes moving {
+    50% {
         width: 100%;
     }
-    
+
+    100% {
+        width: 0;
+        right: 0;
+        left: unset;
+    }
+}
+
