@@ -99,6 +99,10 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://upload.pypi.org/legacy/
+          packages-dir: dist/
+          print-hash: true
+          verbose: true
+          verify-metadata: true
 
   github_release:
     name: Create GitHub Release
