@@ -147,6 +147,33 @@ jobs:
           echo "==== DISTRIBUTION FILES ===="
           ls -la dist/
           echo "=========================="
+          
+      - name: Verify package version in wheel
+        run: |
+          echo "==== VERIFYING PACKAGE VERSION ===="
+          # Extract version from wheel filename
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          echo "Wheel file: $WHEEL_FILE"
+          if [[ -z "$WHEEL_FILE" ]]; then
+            echo "ERROR: No wheel file found in dist directory!"
+            exit 1
+          fi
+          
+          # Extract the version from the filename (assuming format package_name-version-py3-none-any.whl)
+          FILENAME=$(basename "$WHEEL_FILE")
+          VERSION_IN_FILENAME=$(echo "$FILENAME" | cut -d'-' -f2)
+          
+          echo "Version in filename: $VERSION_IN_FILENAME"
+          echo "Expected version: ${{ needs.update_version.outputs.new_version }}"
+          
+          # Check if versions match
+          if [[ "$VERSION_IN_FILENAME" != "${{ needs.update_version.outputs.new_version }}" ]]; then
+            echo "WARNING: Version in wheel filename ($VERSION_IN_FILENAME) doesn't match expected version (${{ needs.update_version.outputs.new_version }})"
+            echo "This might cause release issues on PyPI."
+          else
+            echo "Version in wheel matches expected version."
+          fi
+          echo "====================================="
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -154,3 +181,23 @@ jobs:
           packages-dir: dist/
           verbose: true
           skip-existing: true
+      
+      - name: Verify PyPI release
+        if: success()
+        run: |
+          echo "==== VERIFYING PYPI RELEASE ===="
+          echo "Waiting 30 seconds for PyPI to index the package..."
+          sleep 30
+          
+          # Try to check if the package is available on PyPI
+          echo "Attempting to query PyPI for version ${{ needs.update_version.outputs.new_version }}..."
+          PYPI_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/skinnerbox-source/${{ needs.update_version.outputs.new_version }}/json")
+          
+          if [ "$PYPI_STATUS" == "200" ]; then
+            echo "SUCCESS: Version ${{ needs.update_version.outputs.new_version }} found on PyPI!"
+          else
+            echo "WARNING: Version ${{ needs.update_version.outputs.new_version }} not found on PyPI (HTTP status: $PYPI_STATUS)"
+            echo "This could be due to PyPI indexing delay or the package wasn't uploaded."
+            echo "Check the PyPI publishing step for any warnings about skipped files."
+          fi
+          echo "==========================="
