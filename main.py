@@ -6,6 +6,7 @@ from app import app_config
 from app.trial_state_machine import TrialStateMachine
 from app.app_config import log_directory
 import os
+
 try:
     from app.gpio import water_primer, start_trial_button, manual_interaction, start_motor, water
 except:
