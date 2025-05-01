@@ -16,10 +16,10 @@ logging.basicConfig(
 logger = logging.getLogger("skinnerbox.main")
 
 # Import app components
-from app import app
 from app import app_config
 from app.trial_state_machine import TrialStateMachine
 from app.app_config import log_directory
+from app.flask_app import app  # Import the Flask app instance correctly
 
 # Set up GPIO with error handling
 try:
@@ -97,16 +97,12 @@ def save_settings(settings):
 
 # Run the app
 if __name__ == '__main__':
+
     # Create a state machine
-    trial_state_machine = TrialStateMachine()
-    
-    # Set up GPIO handlers if available
-    if gpio_available:
-        water_primer.when_pressed = start_motor  # Start the motor when the water primer is pressed
-        start_trial_button.when_pressed = trial_state_machine.start_trial  # Start the trial when the start button is pressed
-        manual_interaction.when_pressed = trial_state_machine.interact  # Register an interaction when the manual interaction button is pressed
-    else:
-        logger.info("GPIO handlers not set up (running in mock mode)")
-    
+    trial_state_machine = TrialStateMachine() # Create an instance of the TrialStateMachine class
+    water_primer.when_pressed = start_motor # Start the motor when the water primer is pressed
+    start_trial_button.when_pressed = trial_state_machine.start_trial # Start the trial when the start button is pressed
+    manual_interaction.when_pressed = water # Water when the manual interaction button is pressed
+
     # Start the Flask app
     app.run(debug=False, use_reloader=False, host='0.0.0.0')

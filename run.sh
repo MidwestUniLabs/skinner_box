@@ -7,6 +7,6 @@ cd /mnt/c/Users/jacob/Documents/GitHub/skinner_box
 if [ -d "venv" ]; then
     source venv/bin/activate
 fi
-
+echo "Running the script..."
 # Run the main.py file
 python main.py
