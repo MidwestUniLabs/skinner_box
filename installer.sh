@@ -91,9 +91,6 @@ EOL
 # Make the update checker executable
 chmod +x update_checker.py
 
-# Make the run.sh script executable
-chmod +x run.sh
-
 # Setup cron job automatically
 echo "Setting up automatic update checks via cron..."
 CURRENT_DIR=$(pwd)
