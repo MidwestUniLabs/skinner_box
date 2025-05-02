@@ -65,12 +65,6 @@ You can run the application using either the shell script or directly with Pytho
 $ ./run.sh
 ```
 
-Or:
-
-```
-$ python run.py
-```
-
 ## Development and Versioning
 
 ### Version Control:

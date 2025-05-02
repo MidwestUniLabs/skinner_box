@@ -90,6 +90,7 @@ EOL
 
 # Make the update checker executable
 chmod +x update_checker.py
+chmod +x run.sh
 
 # Setup cron job automatically
 echo "Setting up automatic update checks via cron..."
