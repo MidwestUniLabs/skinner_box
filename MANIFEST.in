@@ -1,0 +1,11 @@
+include README.md
+include requirements.txt
+include version.txt
+
+recursive-include skinnerbox *.py
+recursive-include skinnerbox/app *.py
+recursive-include skinnerbox/logs *.log
+recursive-exclude tests *
+
+exclude skinnerbox/*.secure
+exclude skinnerbox/.env

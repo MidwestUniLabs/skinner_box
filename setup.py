@@ -9,7 +9,7 @@ with open("requirements.txt", "r") as f:
     requirements = [line.strip() for line in f.readlines() if line.strip() and not line.startswith("#")]
 
 setup(
-    name="Skinnerbox-Source",
+    name="skinnerbox",
     version=version,
     description="Source Code for the Skinner Box by Midwest UniLabs",
     long_description=open("README.md").read(),
@@ -20,6 +20,11 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=requirements,
+    entry_points={
+        'console_scripts': [
+            'skinnerbox=skinnerbox:main',
+        ],
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

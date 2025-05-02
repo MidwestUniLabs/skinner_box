@@ -23,6 +23,10 @@ pip install --upgrade pip
 echo "Installing packages from requirements.txt..."
 pip install -r requirements.txt
 
+# Install the skinnerbox package in development mode
+echo "Installing skinnerbox package in development mode..."
+pip install -e .
+
 # Create update checker script
 echo "Creating update checker script..."
 cat > update_checker.py << 'EOL'
@@ -90,7 +94,7 @@ EOL
 
 # Make the update checker executable
 chmod +x update_checker.py
-chmod +x run.sh
+chmod +x
 
 # Setup cron job automatically
 echo "Setting up automatic update checks via cron..."

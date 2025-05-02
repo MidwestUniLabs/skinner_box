@@ -1,12 +1,15 @@
 #!/bin/bash
 
 # Change to the correct directory
-cd /mnt/c/Users/jacob/Documents/GitHub/skinner_box
+cd "$(dirname "$0")"
 
 # Activate virtual environment if it exists
 if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 
-# Run the main.py file
-python main.py
+# Run the main application using the installed package
+python -m skinnerbox.main
+
+# Alternative method if the module approach doesn't work
+# python -c "import skinnerbox; skinnerbox.main()"
