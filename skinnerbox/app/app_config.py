@@ -4,7 +4,7 @@ import os
 # Get project folders directory
 current_file_directory = os.path.dirname(os.path.abspath(__file__))
 # Navigate up one level to get the skinnerbox package root directory
-project_directory = os.path.dirname(current_file_directory)
+project_directory = os.path.dirname(os.path.dirname(current_file_directory))
 
 settings_path = os.path.join(project_directory, 'trial_config.json')
 # Use os.path.join for consistent path separators across platforms

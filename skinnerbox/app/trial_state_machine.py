@@ -3,9 +3,9 @@ import threading
 import json
 import os
 import time
-from app import gpio
+from skinnerbox.app import gpio
 from dotenv import load_dotenv
-from app.app_config import log_directory
+from skinnerbox.app.app_config import log_directory
 
 class TrialStateMachine: #TODO Clean up the code
     """

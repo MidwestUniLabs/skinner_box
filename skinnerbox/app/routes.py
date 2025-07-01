@@ -1,17 +1,16 @@
-# app/routes.py
 import os
 from flask import render_template, request, jsonify, redirect, send_file, send_from_directory, url_for
 import requests
-from app import app_config, gpio, app
-from app.trial_state_machine import TrialStateMachine
-from main import list_log_files_sorted, load_settings, save_settings, trial_state_machine
+from skinnerbox.app import app_config, gpio, app
+from skinnerbox.app.trial_state_machine import TrialStateMachine
+from skinnerbox.utils import list_log_files_sorted, load_settings, save_settings
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook
-from app import gpio
+from skinnerbox.app import gpio
 import json
 from functools import wraps
 from flask import abort, make_response
-import app.trial_state_machine as statemachine
+import skinnerbox.app.trial_state_machine as statemachine
 from cryptography.fernet import Fernet
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
