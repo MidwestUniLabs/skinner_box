@@ -14,7 +14,7 @@ jobs:
       new_version: ${{ steps.version.outputs.new_version }}
       tag_name: ${{ steps.version.outputs.tag_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -57,7 +57,7 @@ jobs:
     needs: update_version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.update_version.outputs.tag_name }}
 
@@ -94,7 +94,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.update_version.outputs.tag_name }}
