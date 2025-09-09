@@ -256,7 +256,7 @@ def test_io():
 def trial():
     settings = load_settings()  # Load settings
     if(trial_state_machine.state == 'running'):
-        return render_template('runningtrialpage.html', settings=settings) #TODO change to trialpage
+        return render_template('trialpage.html', settings=settings) #TODO change to trialpage
     else:
         settings = load_settings()  # Load settings
         # Perform operations based on settings...
@@ -291,14 +291,14 @@ def start():
     global trial_state_machine
     settings = load_settings()  # Load settings
     if trial_state_machine.state == 'Running':
-        return render_template('runningtrialpage.html', settings=settings)
+        return render_template('trialpage.html', settings=settings)
     elif trial_state_machine.state == 'Idle':
         if trial_state_machine.start_trial():
-            return render_template('runningtrialpage.html', settings=settings)
+            return render_template('trialpage.html', settings=settings)
     elif trial_state_machine.state == 'Completed':
         trial_state_machine = TrialStateMachine()
         if trial_state_machine.start_trial():
-            return render_template('runningtrialpage.html', settings=settings)
+            return render_template('trialpage.html', settings=settings)
         return render_template('trialsettingspage.html', settings=settings)
 #endregion Trial Settings
 

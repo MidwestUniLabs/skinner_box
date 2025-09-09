@@ -9,8 +9,8 @@ project_directory = os.path.dirname(current_file_directory)
 
 # Use os.path.join for consistent path separators across platforms
 settings_path = os.path.join(project_directory, 'trial_config.json')
-log_directory = os.path.join(project_directory, 'logs')
-temp_directory = os.path.join(project_directory, 'temp')
+log_directory = os.path.join(project_directory, 'logs/')
+temp_directory = os.path.join(project_directory, 'temp/')
 gpioMonitor_path = os.path.join(project_directory, 'gpioMonitor.json')
 
 # Ensure required directories exist

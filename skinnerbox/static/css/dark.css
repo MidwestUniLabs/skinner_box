@@ -176,6 +176,7 @@ footer {
 
 /* === Number Input Styles === */
 input[type="number"].form-control {
+    appearance: textfield; 
     -moz-appearance: textfield; /* Firefox */
 }
 input[type="number"].form-control::-webkit-inner-spin-button,

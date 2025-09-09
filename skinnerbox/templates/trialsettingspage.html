@@ -3,10 +3,10 @@
 {% block title %}Skinnerbox - Trial Settings{% endblock %}
 
 {% block content %}
-<div class="form-container glass-card">
+<div class="form-container glass-card rounded-2xl shadow-2xl shadow-black/25 overflow-hidden">
     <h1 class="text-3xl font-bold text-center mb-8">Trial Settings</h1>
     
-    <form id="settings-form" action="{{ url_for('update_trial_settings') }}" method="post">
+    <form id="settings-form" action="/start" method="post">
         <div class="form-row">
             <label for="duration">Trial Duration (minutes)</label>
             <input type="number" id="duration" name="duration" class="form-control" value="{{ settings['duration'] }}" min="1" required>
@@ -70,7 +70,7 @@
         </div>
         
         <div class="flex justify-end mt-12">
-            <button type="submit" class="btn btn-primary">Save and Start Trial</button>
+            <button type="submit" class="btn btn-primary">Start Trial</button>
         </div>
     </form>
 </div>
