@@ -276,12 +276,15 @@ def trial_settings(): # Displays the trial settings with the settings loaded fro
     return render_template('trialsettingspage.html', settings=settings)
 
 @app.route('/update-trial-settings', methods=['POST'])
-def update_trial_settings(): # Updates the trial settings with the form data
+def update_trial_settings():
+    # This part is perfect
     settings = load_settings()
     for key in request.form:
         settings[key] = request.form[key]
     save_settings(settings)
-    return redirect(url_for('trial_settings'))
+
+    # Instead of redirecting, return a JSON response
+    return jsonify(success=True, message="Settings updated successfully.")
 
 @app.route('/start', methods=['POST'])
 def start():

@@ -3,63 +3,44 @@
 {% block title %}Skinnerbox - Homepage{% endblock %}
 
 {% block content %}
-<div class="container" style="display: block; text-align: center;">
-    <section class="get-started" style="display: block;">
-        <h2>Get Started</h2>
-        <p>To run a trial click here: </p>
-        <form action="/trial" method="post">
-            <input type="submit" value="Go To Trial">
-        </form>
-        <p>To view logs click here: </p>
-        <form action="/log-viewer" method="get">
-            <input type="submit" value="View Logs">
-        </form>
-        <p>To test the I/O of your skinner box click here: </p>
-        <form action="/testingpage">
-            <input type="submit" value="Test I/O">
-        </form>
-    </section>
-
-    <br><br><hr style="width: 50%;"><br>
-
-    <div class="LoginLogout" style="display: block;">
-        <button onclick="document.getElementById('id01').style.display='block'" style="width:auto;">Login</button>
-        <button onclick="logoutUser()" style="width:auto;">Logout</button>
-        <div id="id02" style="display:none;">
-            <h3>Logged in as: {{ current_user }}</h3>
-        </div>
-        <div id="id03" style="display:none;">
-            <h3 style="color: red;">Not logged in</h3>
-        </div>
-        <div class="Login">
-            <div id="id01" class="modal">
-                <form class="modal-content animate" onsubmit="loginUser(event)">
-                    <div class="imgcontainer">
-                        <span onclick="document.getElementById('id01').style.display='none'" class="close" title="Close Modal">&times;</span>
-                    </div>
-                    <div class="container">
-                        <label for="uname"><b>Username</b></label>
-                        <input type="text" placeholder="Enter Username" name="uname" required>
-                        <br><br>
-                        <label for="psw"><b>Password</b></label>
-                        <input type="password" placeholder="Enter Password" name="psw" required>
-                        <br><br>
-                        <button id="login-btn" type="submit">
-                            <div id="spinner" class="loader_btn_spinner" style="display: none;"></div>
-                            <div id="login_btn_txt">Login</div>
-                        </button>
-                    </div>
-                    <div class="container">
-                        <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Cancel</button>
-                    </div>
-                </form>
+<div class="w-full max-w-6xl glass-card rounded-2xl shadow-2xl shadow-black/25 overflow-hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2">
+        
+        <div class="p-8 sm:p-12 flex flex-col justify-center">
+            <div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-white">Welcome Home</h2>
+                <p class="mt-2 text-lg text-slate-400">User: <span class="font-medium text-slate-300">Jacob</span></p>
+                <p class="mt-4 text-slate-400">This is your central hub for managing and monitoring your Skinner box experiments. Select an option to get started.</p>
             </div>
         </div>
+
+        <div class="p-8 sm:p-12 bg-black/10 flex flex-col justify-center">
+            <div class="space-y-8">
+                <div>
+                    <label class="font-semibold text-lg text-white block mb-3">Run a Trial</label>
+                    <a href="{{ url_for('trial_settings') }}" class="btn btn-primary btn-block">
+                        Start New Trial
+                    </a>
+                </div>
+                <div>
+                    <label class="font-semibold text-lg text-white block mb-3">View Logs</label>
+                     <a href="{{ url_for('log_viewer') }}" class="btn btn-secondary btn-block">
+                        Experiment History
+                    </a>
+                </div>
+                <div>
+                    <label class="font-semibold text-lg text-white block mb-3">Test Hardware</label>
+                    <a href="{{ url_for('io_testing') }}" class="btn btn-secondary btn-block">
+                        I/O Diagnostics
+                    </a>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
-<!-- Toast Notification Container -->
-<div id="toast-container"></div>
+<div id="toast-container" class="fixed top-5 right-5 z-50 pointer-events-none"></div>
 
 {% endblock %}
 
