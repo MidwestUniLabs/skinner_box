@@ -95,7 +95,7 @@ const completeTrial = (reason) => {};
 
 const fetchTrialStatus = () => {
     if(document.hidden) return; // Don't fetch if the page is hidden (e.g. in another tab)
-    fetch('/trial-status')
+    fetch('/trial/status')
     .then(response => response.json())
     .then(data => {
         document.getElementById('timeRemaining').textContent = data.timeRemaining;

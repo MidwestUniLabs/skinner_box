@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends "Base.html" %}
 
-{% block title %}Skinnerbox - Homepage{% endblock %}
+{% block title %}Skinnerbox - HomePage{% endblock %}
 
 {% block content %}
 <div class="w-full max-w-6xl glass-card rounded-2xl shadow-2xl shadow-black/25 overflow-hidden">
@@ -30,7 +30,7 @@
                 </div>
                 <div>
                     <label class="font-semibold text-lg text-white block mb-3">Test Hardware</label>
-                    <a href="{{ url_for('io_testing') }}" class="btn btn-secondary btn-block">
+                    <a href="{{ url_for('render_testing_page') }}" class="btn btn-secondary btn-block">
                         I/O Diagnostics
                     </a>
                 </div>
@@ -45,5 +45,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/home.js') }}"></script>
+<script src="{{ url_for('static', filename='js/HomePage.js') }}"></script>
 {% endblock %}

@@ -188,14 +188,14 @@ def load_token(field=None):
 
 #region Home Page
 @app.route('/')
-def homepage():
-    return render_template('homepage.html')
+def render_home_page():
+    return render_template('HomePage.html')
 #endregion Home Page
 
 #region Testing Page
 @app.route('/testingpage')
-def io_testing():
-    return render_template('testingpage.html')
+def render_testing_page():
+    return render_template('TestingPage.html')
 
 @app.route('/test_io', methods=['POST'])
 def test_io():
@@ -253,14 +253,14 @@ def test_io():
 
 #region Trial Page
 @app.route('/trial', methods=['POST'])
-def trial():
+def route_trial_page():
     settings = load_settings()  # Load settings
     if(trial_state_machine.state == 'running'):
-        return render_template('trialpage.html', settings=settings) #TODO change to trialpage
+        return render_template('TrialPage.html', settings=settings)
     else:
         settings = load_settings()  # Load settings
         # Perform operations based on settings...
-        return render_template('trialsettingspage.html', settings=settings) #TODO change to trialsettings
+        return render_template('TrialSettings.html', settings=settings)
 
 @app.route('/manuallyEndTrial', methods=['POST'])
 def manuallyEndTrial(): # Stops the trial
@@ -273,9 +273,9 @@ def manuallyEndTrial(): # Stops the trial
 @app.route('/trial-settings', methods=['GET'])
 def trial_settings(): # Displays the trial settings with the settings loaded from the file
     settings = load_settings()
-    return render_template('trialsettingspage.html', settings=settings)
+    return render_template('TrialSettings.html', settings=settings)
 
-@app.route('/update-trial-settings', methods=['POST'])
+@app.route('/trial-settings/update', methods=['POST'])
 def update_trial_settings():
     # This part is perfect
     settings = load_settings()
@@ -286,23 +286,23 @@ def update_trial_settings():
     # Instead of redirecting, return a JSON response
     return jsonify(success=True, message="Settings updated successfully.")
 
-@app.route('/start', methods=['POST'])
-def start():
+@app.route('/trial/start', methods=['POST'])
+def start_trial():
     global trial_state_machine
     settings = load_settings()  # Load settings
     if trial_state_machine.state == 'Running':
-        return render_template('trialpage.html', settings=settings)
+        return render_template('TrialPage.html', settings=settings)
     elif trial_state_machine.state == 'Idle':
         if trial_state_machine.start_trial():
-            return render_template('trialpage.html', settings=settings)
+            return render_template('TrialPage.html', settings=settings)
     elif trial_state_machine.state == 'Completed':
         trial_state_machine = TrialStateMachine()
         if trial_state_machine.start_trial():
-            return render_template('trialpage.html', settings=settings)
-        return render_template('trialsettingspage.html', settings=settings)
+            return render_template('TrialPage.html', settings=settings)
+        return render_template('TrialSettings.html', settings=settings)
 #endregion Trial Settings
 
-@app.route('/trial-status') #TODO Is this used?
+@app.route('/trial/status')
 def trial_status(): # Returns the current status of the trial
     global trial_state_machine
     try:
@@ -320,9 +320,10 @@ def trial_status(): # Returns the current status of the trial
 @app.route('/log-viewer', methods=['GET', 'POST'])
 def log_viewer(): # Displays the log files in the log directory
     log_files = list_log_files_sorted(log_directory)  # Get sorted list of log files
-    return render_template('logpage.html', log_files=log_files)
+    return render_template('LogPage.html', log_files=log_files)
 
-@app.route('/download-raw-log/<filename>')
+#TODO These can't be secure right?
+@app.route('/log-viewer/download-raw/<filename>')
 def download_raw_log_file(filename): # Download the raw log file
     filename = secure_filename(filename)  # Sanitize the filename
     try:
@@ -330,7 +331,7 @@ def download_raw_log_file(filename): # Download the raw log file
     except FileNotFoundError:
         return "Log file not found.", 404
 
-@app.route('/download-excel-log/<filename>')
+@app.route('/log-viewer/download-excel/<filename>')
 def download_excel_log_file(filename):
     """
     Convert a JSON log file into an Excel file and provide it for download.
@@ -397,7 +398,7 @@ def download_excel_log_file(filename):
         app.logger.error(f"Error converting log to Excel: {e}")
         return jsonify({"error": "An error occurred while processing the request."}), 500
 
-@app.route('/view-log/<filename>')
+@app.route('/log-viewer/view-log/<filename>')
 def view_log(filename):
     """
     Fetches and returns the contents of a local log file as JSON.
@@ -419,7 +420,7 @@ def view_log(filename):
         print(f"Error reading log file: {e}")
         return jsonify({"error": "Error loading log content."}), 500
 
-@app.route('/push_log', methods=['POST'])
+@app.route('/log-viewer/push-log', methods=['POST'])
 @login_required
 @reauth_if_needed
 def push_log():
@@ -482,7 +483,7 @@ def push_log():
         return jsonify({"error": "An unexpected error occurred while processing the log."}), 500
 
 
-@app.route('/pull_user_logs', methods=['GET']) #TODO Sort by newest (by default)
+@app.route('/log-viewer/pull-logs', methods=['GET']) #TODO Sort by newest (by default)
 @login_required
 @reauth_if_needed
 def pull_user_logs():
@@ -539,7 +540,7 @@ def pull_user_logs():
         print(f"Error processing user logs: {e}")
         return {"error": str(e)}, 500
 
-@app.route('/list_local_logs', methods=['GET']) #TODO Sort by newest (by default)
+@app.route('/log-viewer/list-local', methods=['GET']) #TODO Sort by newest (by default)
 def list_local_logs():
     """
     List all local log files in the log directory.

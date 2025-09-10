@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Send the data to the server endpoint using Fetch
-            const response = await fetch('/update-trial-settings', {
+            const response = await fetch('/trial-settings/update', {
                 method: 'POST',
                 body: formData,
             });

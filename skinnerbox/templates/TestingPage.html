@@ -1,0 +1,29 @@
+{% extends "Base.html" %}
+
+{% block title %}Skinnerbox - I/O Testing{% endblock %}
+
+{% block content %}
+<div class="form-container glass-card text-center">
+    <h1 class="text-3xl font-bold mb-8">I/O Testing</h1>
+
+    <div class="notice-banner" id="mockBanner">
+        <p>⚠️ Notice: Running in **MOCK MODE** - No real GPIO changes will be made.</p>
+        <button class="close-btn" onclick="document.getElementById('mockBanner').style.display='none'">&times;</button>
+    </div>
+    
+    <div class="flex flex-wrap justify-center gap-4">
+        <button class="btn btn-secondary" value="feeder">Feed</button>
+        <button class="btn btn-secondary" value="water">Water</button>
+        <button class="btn btn-secondary" value="buzzer">Sound Buzzer</button>
+        <button class="btn btn-secondary" value="light">Light Stimulus</button>
+        <button class="btn btn-secondary" value="lever">Lever Press</button>
+        <button class="btn btn-secondary" value="poke">Nose Poke</button>
+    </div>
+</div>
+
+<div id="toast-container" class="fixed top-5 right-5 z-50 pointer-events-none"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/TestingPage.js') }}"></script>
+{% endblock %}
