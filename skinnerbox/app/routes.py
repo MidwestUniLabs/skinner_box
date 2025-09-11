@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from flask import render_template, request, jsonify, redirect, send_file, send_from_directory, url_for
 import requests
 from skinnerbox.app import app_config, gpio, app
@@ -6,7 +7,6 @@ from skinnerbox.app.trial_state_machine import TrialStateMachine
 from skinnerbox.utils import list_log_files_sorted, load_settings, save_settings
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook
-from skinnerbox.app import gpio
 import json
 from functools import wraps
 from flask import abort, make_response
@@ -255,7 +255,7 @@ def test_io():
 @app.route('/trial', methods=['POST'])
 def route_trial_page():
     settings = load_settings()  # Load settings
-    if(trial_state_machine.state == 'running'):
+    if(getattr(trial_state_machine, 'state', 'Idle') == 'Running'):
         return render_template('TrialPage.html', settings=settings)
     else:
         settings = load_settings()  # Load settings
@@ -265,8 +265,67 @@ def route_trial_page():
 @app.route('/manuallyEndTrial', methods=['POST'])
 def manuallyEndTrial(): # Stops the trial
     if trial_state_machine.finish_trial("Manually Ended"):
-        return redirect(url_for('trial_settings'))
+        return redirect(url_for('route_summary_page'))
     return redirect(url_for('trial_settings'))
+
+@app.route('/trial/status')
+def trial_status(): # Returns the current status of the trial
+    global trial_state_machine
+    try:
+        # This returns the real-time values of countdown and current iteration
+        trial_status = {
+            'timeRemaining': getattr(trial_state_machine, 'timeRemaining', None),
+            'currentIteration': getattr(trial_state_machine, 'currentIteration', 0),
+            'state': getattr(trial_state_machine, 'state', 'Idle'),
+            'endStatus': getattr(trial_state_machine, 'endStatus', None)
+        }
+        return jsonify(trial_status)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#region Trial API for UI
+@app.route('/trial/config', methods=['GET'])
+def trial_config():
+    """Return trial configuration for the UI."""
+    try:
+        # Prefer the state machine settings if already loaded
+        settings = getattr(trial_state_machine, 'settings', {}) or load_settings()
+        goal = int(settings.get('goal', 0) or 0)
+        duration_minutes = int(settings.get('duration', 0) or 0)
+        interaction_type = settings.get('interactionType', 'lever')
+        return jsonify({
+            'targetScore': goal,
+            'targetTimeSeconds': duration_minutes * 60,
+            'interactionType': interaction_type
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/trial/record', methods=['POST'])
+def trial_record():
+    """Record a manual interaction according to the configured interaction type."""
+    global trial_state_machine
+    try:
+        if getattr(trial_state_machine, 'state', 'Idle') != 'Running':
+            return jsonify({"error": "Trial is not running"}), 400
+
+        interaction_type = trial_state_machine.settings.get('interactionType', 'lever')
+        if interaction_type == 'lever':
+            trial_state_machine.lever_press()
+        else:
+            trial_state_machine.nose_poke()
+
+        # Respond with updated status
+        response = {
+            'currentIteration': getattr(trial_state_machine, 'currentIteration', 0),
+            'timeRemaining': getattr(trial_state_machine, 'timeRemaining', None)
+        }
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+#endregion
 #endregion Trial Page
 
 #region Trial Settings
@@ -301,20 +360,6 @@ def start_trial():
             return render_template('TrialPage.html', settings=settings)
         return render_template('TrialSettings.html', settings=settings)
 #endregion Trial Settings
-
-@app.route('/trial/status')
-def trial_status(): # Returns the current status of the trial
-    global trial_state_machine
-    try:
-        # This returns the real-time values of countdown and current iteration
-        trial_status = {
-            'timeRemaining': trial_state_machine.timeRemaining,
-            'currentIteration': trial_state_machine.currentIteration
-        }
-        print (trial_state_machine.timeRemaining)
-        return jsonify(trial_status)
-    except:
-        return
 
 #region Log Viewer Page
 @app.route('/log-viewer', methods=['GET', 'POST'])
@@ -673,3 +718,90 @@ def Get_Protected_Data():
         print(f"Error fetching protected data: {e}")
         return None
 #endregion
+
+@app.route("/summary_page")
+def route_summary_page():
+    # Build trial logs list and compute summary from latest or selected log
+    log_files = list_log_files_sorted(log_directory)
+
+    selected_log = None
+    trial_data = {}
+    metrics = {
+        'pi_id': None,
+        'status': None,
+        'start_time': None,
+        'end_time': None,
+        'duration_seconds': 0,
+        'duration_display': '00:00:00',
+        'total_interactions': 0,
+        'total_rewards': 0,
+        'total_no_reward': 0,
+        'counts_by_type': {},
+    }
+
+    if log_files:
+        # Support selecting a specific log via query param
+        requested_file = request.args.get('file')
+        if requested_file:
+            candidate = secure_filename(requested_file)
+            if candidate in log_files:
+                selected_log = candidate
+        if not selected_log:
+            selected_log = log_files[0]
+
+        file_path = os.path.join(log_directory, selected_log)
+        try:
+            with open(file_path, 'r') as f:
+                trial_data = json.load(f)
+
+            entries = trial_data.get('trial_entries', [])
+            total_rewards = sum(1 for entry in entries if entry.get('reward'))
+            counts_by_type = {}
+            for entry in entries:
+                t = entry.get('type')
+                counts_by_type[t] = counts_by_type.get(t, 0) + 1
+
+            # Compute duration
+            start_time_str = trial_data.get('start_time')
+            end_time_str = trial_data.get('end_time')
+            duration_seconds = 0
+            duration_display = '00:00:00'
+            try:
+                if start_time_str and end_time_str:
+                    start_dt = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
+                    end_dt = datetime.strptime(end_time_str, '%Y-%m-%d %H:%M:%S')
+                    duration_seconds = int((end_dt - start_dt).total_seconds())
+                    hours = duration_seconds // 3600
+                    minutes = (duration_seconds % 3600) // 60
+                    seconds = duration_seconds % 60
+                    duration_display = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            except Exception:
+                pass
+
+            metrics = {
+                'pi_id': trial_data.get('pi_id'),
+                'status': trial_data.get('status'),
+                'start_time': start_time_str,
+                'end_time': end_time_str,
+                'duration_seconds': duration_seconds,
+                'duration_display': duration_display,
+                'total_interactions': trial_data.get('total_interactions', 0),
+                'total_rewards': total_rewards,
+                'total_no_reward': max(len(entries) - total_rewards, 0),
+                'counts_by_type': counts_by_type,
+            }
+        except Exception as e:
+            print(f"Error loading log '{selected_log}' for summary: {e}")
+
+    trial_summary = {
+        'total_trials': len(log_files),
+    }
+
+    return render_template(
+        'SummaryPage.html',
+        trial_logs=log_files,
+        selected_log=selected_log,
+        trial_summary=trial_summary,
+        trial_data=trial_data,
+        metrics=metrics,
+    )

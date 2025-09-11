@@ -143,12 +143,12 @@ class TrialStateMachine: #TODO Clean up the code
                 self.lastStimulusTime = time.time()
             
             # **Check if trial should finish**
-            if self.currentIteration >= goal:  # Goal reached
+            if goal > 0 and self.currentIteration >= goal:  # Goal reached (only if goal is set)
                 self.elapsed_time = round(self.elapsed_time, 2)
                 self.finish_trial(endStatus="Goal Reached")
                 break
 
-            elif self.timeRemaining <= 0:  # Time limit reached
+            elif duration > 0 and self.timeRemaining <= 0:  # Time limit reached (only if duration is set)
                 self.elapsed_time = round(self.elapsed_time, 2)
                 self.finish_trial(endStatus="Time Limit Reached")
                 break

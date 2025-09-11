@@ -17,8 +17,13 @@
                         <div class="w-full max-w-xs mx-auto mt-6">
                             <div class="flex justify-between items-baseline text-slate-300">
                                 <span>Current Score</span>
-                                <span class="font-mono text-2xl font-medium text-white"><span id="current-score-display">0</span> / 10</span>
+                                <span class="font-mono text-2xl font-medium text-white"><span id="current-score-display">0</span> / <span id="target-score-total">10</span></span>
                             </div>
+                        </div>
+
+                        <div class="w-full max-w-xs mx-auto mt-4 text-left">
+                            <p class="text-slate-400 font-mono text-sm">Iterations: <span id="currentIteration">0</span></p>
+                            <p class="text-slate-400 font-mono text-sm">Time Remaining: <span id="timeRemaining">--</span>s</p>
                         </div>
 
                         <div class="mt-10 w-full max-w-xs space-y-4">
@@ -72,11 +77,11 @@
                             <div class="space-y-3 text-slate-300">
                                 <div class="flex justify-between items-center">
                                     <span>Target Score</span>
-                                    <span class="font-mono font-bold text-white text-lg">10</span>
+                                    <span id="target-score-label" class="font-mono font-bold text-white text-lg">10</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span>Target Time</span>
-                                    <span class="font-mono font-bold text-white text-lg">10:00</span>
+                                    <span id="target-time-label" class="font-mono font-bold text-white text-lg">10:00</span>
                                 </div>
                             </div>
                         </div>
@@ -112,5 +117,5 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/TrialPage.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/TrialPage.js') }}"></script>
 {% endblock %}

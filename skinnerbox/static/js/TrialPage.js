@@ -3,7 +3,9 @@ const state = {
     elapsedSeconds: 0,
     currentScore: 0,
     targetScore: 10,
-    targetTimeSeconds: 10 * 60, // 10 minutes
+    targetTimeSeconds: 10 * 60,
+    timeRemaining: null,
+    backendState: 'Idle',
     timerInterval: null,
 };
 
@@ -27,6 +29,9 @@ const scoreProgressBar = document.getElementById('score-progress-bar');
 
 const timeProgressPercent = document.getElementById('time-progress-percent');
 const timeProgressBar = document.getElementById('time-progress-bar');
+const targetScoreTotalEl = document.getElementById('target-score-total');
+const targetScoreLabelEl = document.getElementById('target-score-label');
+const targetTimeLabelEl = document.getElementById('target-time-label');
 
 // --- Utility Functions ---
 const formatTime = (totalSeconds) => {
@@ -38,38 +43,66 @@ const formatTime = (totalSeconds) => {
 
 // --- UI Update Functions ---
 const updateUI = () => {
-    // Timer
-    timerEl.textContent = formatTime(state.elapsedSeconds);
+    // Timer (prefer backend-derived elapsed if available and valid)
+    const canUseBackendElapsed = (
+        state.targetTimeSeconds > 0 &&
+        typeof state.timeRemaining === 'number' &&
+        state.timeRemaining <= state.targetTimeSeconds &&
+        (
+            (state.backendState === 'Running' && state.timeRemaining > 0) ||
+            (state.backendState === 'Completed' && state.timeRemaining >= 0)
+        )
+    );
+
+    const elapsed = canUseBackendElapsed
+        ? Math.max(0, state.targetTimeSeconds - state.timeRemaining)
+        : state.elapsedSeconds;
+    timerEl.textContent = formatTime(elapsed);
 
     // Score
     scoreDisplay.textContent = state.currentScore;
     scoreProgressText.textContent = `${state.currentScore}/${state.targetScore}`;
-    const scorePercent = (state.currentScore / state.targetScore) * 100;
+    const scorePercent = state.targetScore > 0 ? (state.currentScore / state.targetScore) * 100 : 0;
     scoreProgressBar.style.width = `${Math.min(scorePercent, 100)}%`;
 
     // Time
-    const timePercent = (state.elapsedSeconds / state.targetTimeSeconds) * 100;
+    const timePercent = state.targetTimeSeconds > 0
+        ? (elapsed / state.targetTimeSeconds) * 100
+        : 0;
     timeProgressBar.style.width = `${Math.min(timePercent, 100)}%`;
     timeProgressPercent.textContent = Math.floor(timePercent);
-    
-    // Check for completion
-    if (state.isRunning) {
-        if (state.currentScore >= state.targetScore) {
-            completeTrial('Target Score Reached');
-        } else if (state.elapsedSeconds >= state.targetTimeSeconds) {
-            completeTrial('Time Limit Reached');
-        }
-    }
+    // Completion is driven by backend state only
 };
 
 const tick = () => {
     if (!state.isRunning) return;
+    // Fallback timer only, backend will override via timeRemaining when available
     state.elapsedSeconds++;
     updateUI();
 };
 
 // --- Core Logic ---
-const startTrial = () => {
+const loadConfig = () => {
+    return fetch('/trial/config')
+        .then(r => r.json())
+        .then(cfg => {
+            if (cfg && !cfg.error) {
+                if (typeof cfg.targetScore === 'number') state.targetScore = cfg.targetScore;
+                if (typeof cfg.targetTimeSeconds === 'number') state.targetTimeSeconds = cfg.targetTimeSeconds;
+                if (targetScoreTotalEl) targetScoreTotalEl.textContent = state.targetScore;
+                if (targetScoreLabelEl) targetScoreLabelEl.textContent = state.targetScore;
+                if (targetTimeLabelEl) {
+                    const mm = Math.floor(state.targetTimeSeconds / 60).toString().padStart(2, '0');
+                    const ss = (state.targetTimeSeconds % 60).toString().padStart(2, '0');
+                    targetTimeLabelEl.textContent = `${mm}:${ss}`;
+                }
+            }
+        })
+        .catch(() => {});
+};
+
+const startTrial = async () => {
+    await loadConfig();
     state.isRunning = true;
     state.timerInterval = setInterval(tick, 1000);
     updateUI();
@@ -87,19 +120,48 @@ const endTrial = (reason, statusClass, color) => {
     
     forceStopBtn.disabled = true;
     recordPointBtn.disabled = true;
+    // Redirect to summary page after a short delay
+    setTimeout(() => {
+        window.location.href = '/summary_page';
+    }, 800);
 };
 
-const stopTrial = () => {};
+const stopTrial = () => {
+    fetch('/manuallyEndTrial', { method: 'POST' })
+        .then(() => {
+            endTrial('Stopped Manually', 'text-rose-400', 'bg-rose-500');
+        })
+        .catch(() => {
+            endTrial('Stopped Manually', 'text-rose-400', 'bg-rose-500');
+        });
+};
 
-const completeTrial = (reason) => {};
+const completeTrial = (reason) => {
+    endTrial(reason, 'text-emerald-400', 'bg-emerald-500');
+};
 
 const fetchTrialStatus = () => {
     if(document.hidden) return; // Don't fetch if the page is hidden (e.g. in another tab)
     fetch('/trial/status')
     .then(response => response.json())
     .then(data => {
-        document.getElementById('timeRemaining').textContent = data.timeRemaining;
-        document.getElementById('currentIteration').textContent = data.currentIteration;
+        const timeRemainingEl = document.getElementById('timeRemaining');
+        const currentIterationEl = document.getElementById('currentIteration');
+        if (typeof data.currentIteration === 'number') {
+            state.currentScore = data.currentIteration;
+        }
+        if (typeof data.timeRemaining === 'number') {
+            state.timeRemaining = data.timeRemaining;
+        }
+        if (typeof data.state === 'string') {
+            state.backendState = data.state;
+        }
+        if (timeRemainingEl) timeRemainingEl.textContent = (typeof state.timeRemaining === 'number') ? state.timeRemaining : '';
+        if (currentIterationEl) currentIterationEl.textContent = state.currentScore ?? '';
+        updateUI();
+        if (data && data.state === 'Completed' && data.endStatus) {
+            completeTrial(data.endStatus);
+        }
     })
     .catch(error => console.error('Error fetching trial status:', error));
 
@@ -133,10 +195,25 @@ confirmStopBtn.addEventListener('click', () => {
 });
 
 recordPointBtn.addEventListener('click', () => {
-    if (state.isRunning && state.currentScore < state.targetScore) {
-        state.currentScore++;
-        updateUI();
-    }
+    if (!state.isRunning) return;
+    fetch('/trial/record', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data && !data.error) {
+                // Keep UI score in sync with backend iteration if provided
+                if (typeof data.currentIteration === 'number') {
+                    state.currentScore = data.currentIteration;
+                } else {
+                    state.currentScore += 1;
+                }
+                updateUI();
+            }
+        })
+        .catch(() => {
+            // Fallback to local increment
+            state.currentScore += 1;
+            updateUI();
+        });
 });
 
 // --- Initialisation ---
