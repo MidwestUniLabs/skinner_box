@@ -129,6 +129,7 @@ def initialize_application(environment_manager):
     try:
         from skinnerbox.app import app
         from skinnerbox.app.trial_state_machine import TrialStateMachine
+        from skinnerbox import __version__
     except ImportError as e:
         print(f"Error importing application components: {e}")
         raise
@@ -136,11 +137,12 @@ def initialize_application(environment_manager):
     environment, debug_mode, host, port = environment_manager.get_config()
     gpio_components = setup_gpio_components(environment_manager, environment)
     ensure_log_directory()
+    version = __version__
     
     trial_state_machine = TrialStateMachine()
     setup_gpio_handlers(environment_manager, environment, gpio_components, trial_state_machine)
 
-    return app, environment, debug_mode, host, port
+    return app, environment, debug_mode, host, port, version
 
 
 # Main Application
@@ -148,12 +150,12 @@ def main():
     """Main function to run the application."""
     try:
         environment_manager = EnvironmentManager()
-        app, environment, debug_mode, host, port = initialize_application(environment_manager)
+        app, environment, debug_mode, host, port, version = initialize_application(environment_manager)
         display_network_info(environment_manager, environment)
 
         print(f"Starting Flask app in {environment} mode on {host}:{port}")
+        print(f"Skinner Box version {version}")
         print(f"Debug mode: {debug_mode}")
-        
         app.run(debug=debug_mode, use_reloader=debug_mode, host=host, port=port)
         
     except Exception as e:
