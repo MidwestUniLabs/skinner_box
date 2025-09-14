@@ -282,7 +282,8 @@ def trial_status(): # Returns the current status of the trial
         }
         return jsonify(trial_status)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logging.exception("Error in /trial/status endpoint")
+        return jsonify({"error": "An internal error has occurred."}), 500
 
 
 #region Trial API for UI
