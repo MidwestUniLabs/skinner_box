@@ -127,7 +127,7 @@ const endTrial = (reason, statusClass, color) => {
 };
 
 const stopTrial = () => {
-    fetch('/manuallyEndTrial', { method: 'POST' })
+    fetch('/trial/stop', { method: 'POST' })
         .then(() => {
             endTrial('Stopped Manually', 'text-rose-400', 'bg-rose-500');
         })
