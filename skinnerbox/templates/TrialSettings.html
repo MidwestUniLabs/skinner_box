@@ -1,0 +1,81 @@
+{% extends "Base.html" %}
+
+{% block title %}Skinnerbox - Trial Settings{% endblock %}
+
+{% block content %}
+<div class="form-container glass-card overflow-hidden">
+    <h1 class="text-3xl font-bold text-center mb-8">Trial Settings</h1>
+    
+    <form id="settings-form" action="/trial/start" method="post">
+        <div class="form-row">
+            <label for="duration">Trial Duration (minutes)</label>
+            <input type="number" id="duration" name="duration" class="form-control" value="{{ settings['duration'] }}" min="1" required>
+        </div>
+        <div class="form-row">
+            <label for="goal">Trial Goal (rewards)</label>
+            <input type="number" id="goal" name="goal" class="form-control" value="{{ settings['goal'] }}" min="1" required>
+        </div>
+        <div class="form-row">
+            <label for="cooldown">Interaction Cooldown (seconds)</label>
+            <input type="number" id="cooldown" name="cooldown" class="form-control" value="{{ settings['cooldown'] }}" min="1" required>
+        </div>
+
+        <div class="form-row">
+            <label>Reward Type</label>
+            <div class="radio-group">
+                <div class="radio-option">
+                    <input type="radio" id="reward-water" name="rewardType" value="water" {% if settings['rewardType'] == 'water' %}checked{% endif %} required>
+                    <label for="reward-water">Water</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="reward-food" name="rewardType" value="food" {% if settings['rewardType'] == 'food' %}checked{% endif %} required>
+                    <label for="reward-food">Food</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label>Interaction Type</label>
+            <div class="radio-group">
+                <div class="radio-option">
+                    <input type="radio" id="interaction-lever" name="interactionType" value="lever" {% if settings['interactionType'] == 'lever' %}checked{% endif %} required>
+                    <label for="interaction-lever">Lever</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="interaction-poke" name="interactionType" value="poke" {% if settings['interactionType'] == 'poke' %}checked{% endif %} required>
+                    <label for="interaction-poke">Poke</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label>Stimulus Type</label>
+            <div class="radio-group">
+                <div class="radio-option">
+                    <input type="radio" id="stimulus-light" name="stimulusType" value="light" {% if settings['stimulusType'] == 'light' %}checked{% endif %} required>
+                    <label for="stimulus-light">Light</label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="stimulus-tone" name="stimulusType" value="tone" {% if settings['stimulusType'] == 'tone' %}checked{% endif %} required>
+                    <label for="stimulus-tone">Tone</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label for="light-color">Light Color</label>
+            <div class="color-input-wrapper">
+                <input type="color" id="light-color" name="light-color" class="form-control" value="{{ settings['light-color'] }}">
+            </div>
+        </div>
+        
+        <div class="flex justify-end mt-12">
+            <button type="submit" class="btn btn-primary">Start Trial</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/TrialSettingsUpdater.js') }}"></script>
+{% endblock %}

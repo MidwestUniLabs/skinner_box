@@ -1,0 +1,120 @@
+{% extends "Base.html" %}
+
+{% block content %}
+    <div id="app" class="flex-grow flex flex-col p-4 sm:p-6 lg:p-8">
+        <!-- Main Content -->
+        <main class="flex-grow flex items-center justify-center">
+            <div class="w-full max-w-6xl glass-card overflow-hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2">
+                    
+                    <!-- Left Panel: Timer & Actions -->
+                    <div class="p-8 sm:p-12 flex flex-col items-center justify-center text-center border-b lg:border-b-0 lg:border-r border-slate-700">
+                        <p class="text-sm uppercase tracking-widest text-slate-400">Elapsed Time</p>
+                        <div id="timer" class="font-mono text-6xl sm:text-7xl md:text-8xl font-bold text-white my-4 tracking-tighter">
+                            00:00:00
+                        </div>
+                        
+                        <div class="w-full max-w-xs mx-auto mt-6">
+                            <div class="flex justify-between items-baseline text-slate-300">
+                                <span>Current Score</span>
+                                <span class="font-mono text-2xl font-medium text-white"><span id="current-score-display">0</span> / <span id="target-score-total">10</span></span>
+                            </div>
+                        </div>
+
+                        <div class="w-full max-w-xs mx-auto mt-4 text-left">
+                            <p class="text-slate-400 font-mono text-sm">Iterations: <span id="currentIteration">0</span></p>
+                            <p class="text-slate-400 font-mono text-sm">Time Remaining: <span id="timeRemaining">--</span>s</p>
+                        </div>
+
+                        <div class="mt-10 w-full max-w-xs space-y-4">
+                            <button id="record-point-btn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-4 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-cyan-300/50 flex items-center justify-center gap-3 text-lg disabled:bg-slate-600 disabled:text-slate-400 disabled:transform-none disabled:cursor-not-allowed">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                                </svg>
+                                Record Point
+                            </button>
+                            <button id="force-stop-btn" class="w-full bg-transparent hover:bg-rose-500/10 border border-rose-500 text-rose-400 hover:text-rose-300 font-bold py-3 px-6 rounded-lg transition-colors duration-300 disabled:border-slate-600 disabled:text-slate-500 disabled:hover:bg-transparent disabled:cursor-not-allowed">
+                                Force Stop
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Info & Progress -->
+                    <div class="p-8 sm:p-12 flex flex-col justify-center">
+                        <div class="mb-8">
+                            <h2 class="text-3xl sm:text-4xl font-bold text-white">Trial #123</h2>
+                            <p class="text-lg text-slate-400">Runner: <span class="font-medium text-slate-300">Jacob</span></p>
+                        </div>
+
+                        <!-- Progress Section -->
+                        <div class="space-y-6 mb-10">
+                            <div>
+                                <div class="flex justify-between items-baseline mb-2">
+                                    <label class="font-semibold text-white">Score Progress</label>
+                                    <p class="text-sm text-slate-400 font-mono"><span id="current-score-progress">0</span>/10</p>
+                                </div>
+                                <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                                    <div id="score-progress-bar" class="progress-bar h-full bg-cyan-500 rounded-full" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-baseline mb-2">
+                                    <label class="font-semibold text-white">Time Progress</label>
+                                    <p class="text-sm text-slate-400 font-mono"><span id="time-progress-percent">0</span>%</p>
+                                </div>
+                                <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                                    <div id="time-progress-bar" class="progress-bar h-full bg-violet-500 rounded-full" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Section -->
+                        <div class="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
+                            <h3 class="font-semibold text-cyan-400 mb-4 flex items-center gap-2 text-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                                Trial Targets
+                            </h3>
+                            <div class="space-y-3 text-slate-300">
+                                <div class="flex justify-between items-center">
+                                    <span>Target Score</span>
+                                    <span id="target-score-label" class="font-mono font-bold text-white text-lg">10</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span>Target Time</span>
+                                    <span id="target-time-label" class="font-mono font-bold text-white text-lg">10:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Force Stop Modal -->
+    <div id="stop-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none modal-backdrop">
+        <div class="modal-content bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-8 transform scale-95 opacity-0">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-rose-500/20 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold text-white">Stop Trial?</h3>
+                <p class="text-slate-400 mt-2">Are you sure you want to force stop this trial? This action cannot be undone.</p>
+            </div>
+            <div class="mt-8 grid grid-cols-2 gap-4">
+                <button id="cancel-stop-btn" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300">
+                    Cancel
+                </button>
+                <button id="confirm-stop-btn" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300">
+                    Confirm Stop
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script defer src="{{ url_for('static', filename='js/TrialPage.js') }}"></script>
+{% endblock %}

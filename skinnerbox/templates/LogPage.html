@@ -1,0 +1,35 @@
+{% extends "Base.html" %}
+
+{% block title %}Skinnerbox - Log Viewer{% endblock %}
+
+{% block content %}
+<div class="log-page-container">
+    <div class="log-sidebar">
+        <h2 class="text-2xl font-bold mb-4">Trial Logs</h2>
+
+        <div class="log-toggle-group">
+            <button id="remote-log-btn" class="log-toggle-btn">Remote</button>
+            <button id="local-log-btn" class="log-toggle-btn">Local</button>
+        </div>
+        
+        <div id="remote-logs" class="log-list" style="display: none;"></div>
+        <div id="local-logs" class="log-list" style="display: none;"></div>
+
+        <div id="action-buttons" class="flex flex-wrap justify-center gap-2 mt-auto pt-4" style="display: none;">
+            <button class="btn btn-secondary" id="download-btn">Download Raw</button>
+            <button class="btn btn-secondary" id="download-excel-btn">Download Excel</button>
+            <button class="btn btn-secondary" id="push-cloud-btn">Push to Cloud</button>
+        </div>
+    </div>
+
+    <div id="log-viewer" class="log-viewer">
+        <h3 class="text-xl font-semibold text-slate-300">Select a log to view details.</h3>
+    </div>
+</div>
+
+<div id="toast-container" class="fixed top-5 right-5 z-50 pointer-events-none"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/LogPage.js') }}"></script>
+{% endblock %}

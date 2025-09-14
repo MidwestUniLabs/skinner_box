@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Midwest Unilabs{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dark.css') }}" rel="stylesheet">
+    {% block scripts %}
+    <!-- Page-specific scripts go here -->
+    {% endblock %}
+</head>
+
+<body class="min-h-screen flex flex-col antialiased">
+
+    <div id="app" class="flex-grow flex flex-col p-4 sm:p-6 lg:p-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div class="flex items-center gap-4">
+                <div class="text-cyan-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 100 60" fill="none"
+                        stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 58 Q 15 20, 30 45 T 55 40 Q 70 2, 80 30 T 98 50" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Midwest Unilabs</h1>
+                    <p class="text-sm text-slate-400">Trial Monitoring System</p>
+                </div>
+            </div>
+            <div id="status-display"
+                class="flex items-center gap-3 px-4 py-2 bg-slate-800/50 rounded-full border border-slate-700">
+                <div class="relative flex h-3 w-3">
+                    <span id="status-indicator-ping"
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span id="status-indicator-dot"
+                        class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </div>
+                <span id="status-text" class="font-semibold text-green-400 text-sm">Trial Running</span>
+            </div>
+        </header>
+        <!-- Main Content -->
+        <main class="flex-grow flex items-center justify-center">
+            {% block content %}
+            <!-- Page-specific content goes here -->
+            {% endblock %}
+        </main>
+    
+    </div>
+    
+    <!-- Footer Section -->
+    <footer>
+        <p>2024 Midwest UniLabs</p>
+    </footer>
+</body>
+
+</html>

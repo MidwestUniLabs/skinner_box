@@ -1,0 +1,49 @@
+{% extends "Base.html" %}
+
+{% block title %}Skinnerbox - HomePage{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-6xl glass-card rounded-2xl shadow-2xl shadow-black/25 overflow-hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2">
+        
+        <div class="p-8 sm:p-12 flex flex-col justify-center">
+            <div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-white">Welcome Home</h2>
+                <p class="mt-2 text-lg text-slate-400">User: <span class="font-medium text-slate-300">Jacob</span></p>
+                <p class="mt-4 text-slate-400">This is your central hub for managing and monitoring your Skinner box experiments. Select an option to get started.</p>
+            </div>
+        </div>
+
+        <div class="p-8 sm:p-12 bg-black/10 flex flex-col justify-center">
+            <div class="space-y-8">
+                <div>
+                    <label class="font-semibold text-lg text-white block mb-3">Run a Trial</label>
+                    <a href="{{ url_for('trial_settings') }}" class="btn btn-primary btn-block">
+                        Start New Trial
+                    </a>
+                </div>
+                <div>
+                    <label class="font-semibold text-lg text-white block mb-3">View Logs</label>
+                     <a href="{{ url_for('log_viewer') }}" class="btn btn-secondary btn-block">
+                        Experiment History
+                    </a>
+                </div>
+                <div>
+                    <label class="font-semibold text-lg text-white block mb-3">Test Hardware</label>
+                    <a href="{{ url_for('render_testing_page') }}" class="btn btn-secondary btn-block">
+                        I/O Diagnostics
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="toast-container" class="fixed top-5 right-5 z-50 pointer-events-none"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/HomePage.js') }}"></script>
+{% endblock %}

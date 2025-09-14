@@ -1,0 +1,111 @@
+<!-- templates/SummaryPage.html -->
+{% extends "Base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Logs List -->
+        <div class="lg:col-span-1 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+            <h2 class="text-xl font-semibold text-white mb-3">Logs</h2>
+            <ul class="space-y-2">
+                {% for log in trial_logs %}
+                    <li>
+                        <a class="text-cyan-400 hover:text-cyan-300" href="{{ url_for('route_summary_page') }}?file={{ log }}">{{ log }}</a>
+                        {% if selected_log == log %}<span class="text-slate-400 text-xs">(selected)</span>{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Summary Details -->
+        <div class="lg:col-span-2 bg-slate-900/50 p-6 rounded-lg border border-slate-700">
+            <h1 class="text-2xl font-bold text-white mb-4">Trial Summary</h1>
+
+            {% if selected_log %}
+                <p class="text-slate-300 mb-4">Showing: <span class="font-mono text-slate-200">{{ selected_log }}</span></p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Pi ID</h3>
+                        <p class="text-white">{{ metrics.pi_id or 'N/A' }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Status</h3>
+                        <p class="text-white">{{ metrics.status or 'N/A' }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Start Time</h3>
+                        <p class="text-white">{{ metrics.start_time or 'N/A' }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">End Time</h3>
+                        <p class="text-white">{{ metrics.end_time or 'N/A' }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Duration</h3>
+                        <p class="text-white">{{ metrics.duration_display }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Total Interactions</h3>
+                        <p class="text-white">{{ metrics.total_interactions }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Rewards</h3>
+                        <p class="text-white">{{ metrics.total_rewards }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">No Reward</h3>
+                        <p class="text-white">{{ metrics.total_no_reward }}</p>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-white mb-2">Counts by Type</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {% for k, v in metrics.counts_by_type.items() %}
+                            <div class="bg-slate-800/60 p-3 rounded border border-slate-700">
+                                <p class="text-slate-400 text-sm">{{ k }}</p>
+                                <p class="text-white text-lg">{{ v }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <h3 class="text-lg font-semibold text-white mb-2">Entries</h3>
+                    <table class="min-w-full text-sm text-left text-slate-300">
+                        <thead class="text-xs uppercase bg-slate-800/60 text-slate-400">
+                            <tr>
+                                <th class="px-4 py-2">#</th>
+                                <th class="px-4 py-2">Rel Time</th>
+                                <th class="px-4 py-2">Type</th>
+                                <th class="px-4 py-2">Reward</th>
+                                <th class="px-4 py-2">Interactions Between</th>
+                                <th class="px-4 py-2">Time Between</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in trial_data.trial_entries %}
+                                <tr class="border-b border-slate-800">
+                                    <td class="px-4 py-2 font-mono">{{ e.entry_num }}</td>
+                                    <td class="px-4 py-2 font-mono">{{ e.rel_time }}</td>
+                                    <td class="px-4 py-2">{{ e.type }}</td>
+                                    <td class="px-4 py-2">{{ 'Yes' if e.reward else 'No' }}</td>
+                                    <td class="px-4 py-2 font-mono">{{ e.interactions_between }}</td>
+                                    <td class="px-4 py-2 font-mono">{{ e.time_between }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-slate-300">No logs found.</p>
+            {% endif %}
+
+            <div class="mt-6">
+                <a class="text-cyan-400 hover:text-cyan-300" href="/">Go Back to HomePage</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

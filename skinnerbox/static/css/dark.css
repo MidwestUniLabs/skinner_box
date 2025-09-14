@@ -1,0 +1,443 @@
+:root {
+    --bg-primary: #0F172A;
+    /* slate-900 */
+    --bg-secondary: #1E293B;
+    /* slate-800 */
+    --bg-tertiary: #334155;
+    /* slate-700 */
+    --border-color: #475569;
+    /* slate-600 */
+    --text-primary: #F1F5F9;
+    /* slate-100 */
+    --text-secondary: #94A3B8;
+    /* slate-400 */
+    --accent-primary: #22D3EE;
+    /* cyan-400 */
+    --accent-secondary: #67E8F9;
+    /* cyan-300 */
+    --color-danger: #F43F5E;
+    /* rose-500 */
+    --color-success: #4ADE80;
+    /* green-400 */
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(34, 211, 238, 0.1), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.1), transparent 25%);
+}
+
+footer {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: #E0E0E0;
+    text-align: center;
+    padding: 20px;
+    padding-top: 30px;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+
+    mask-image: linear-gradient(
+        to top,
+        black 70%, 
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to top,
+        black 70%, 
+        transparent 100%
+    );
+}
+
+.font-mono {
+    font-family: 'Roboto Mono', monospace;
+}
+
+.glass-card {
+    background: rgba(30, 41, 59, 0.5);
+    /* slate-800/50 */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.progress-bar {
+    transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.status-indicator-dot {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.modal-backdrop {
+    transition: opacity 0.3s ease;
+}
+
+.modal-content {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* === Base Button Styles === */
+.btn {
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+    color: #ffffff;
+    border-radius: 0.5rem; /* rounded-lg */
+    cursor: pointer;
+    transition: all 200ms ease-in-out;
+}
+
+/* === Primary Button (Violet) === */
+.btn-primary {
+    padding: 1rem 1.5rem; /* py-4 px-6 */
+    background-color: #7c3aed; /* bg-violet-600 */
+    font-weight: 700; /* font-bold */
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
+}
+
+.btn-primary:hover {
+    background-color: #6d28d9; /* hover:bg-violet-700 */
+    transform: scale(1.05);
+}
+
+/* === Secondary Button (Slate) === */
+.btn-secondary {
+    padding: 0.75rem 1.5rem; /* py-3 px-6 */
+    background-color: #334155; /* bg-slate-700 */
+    font-weight: 600; /* font-semibold */
+}
+
+.btn-secondary:hover {
+    background-color: #475569; /* hover:bg-slate-600 */
+}
+
+/* === Modifier for Full-Width Buttons === */
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+/* === Form & Input Styles === */
+.form-container {
+    max-width: 650px;
+    margin: 2rem auto;
+    padding: 2.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.form-row label {
+    text-align: right;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* General style for text, number, etc. */
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+}
+
+/* === Number Input Styles === */
+input[type="number"].form-control {
+    appearance: textfield; 
+    -moz-appearance: textfield; /* Firefox */
+}
+input[type="number"].form-control::-webkit-inner-spin-button,
+input[type="number"].form-control::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* === Color Input Styles === */
+.color-input-wrapper {
+    position: relative;
+    width: 48px;
+    height: 48px;
+}
+
+input[type="color"].form-control {
+    -webkit-appearance: none;
+    appearance: none;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--border-color);
+}
+
+input[type="color"].form-control::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"].form-control::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+}
+
+/* === Custom Radio Button Styles === */
+.radio-group {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.radio-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.radio-option label {
+    position: relative;
+    padding-left: 32px; /* Space for custom radio */
+    text-align: left;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Custom radio - outer circle */
+.radio-option label::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    transition: border-color 0.2s ease;
+}
+
+/* Custom radio - inner dot */
+.radio-option label::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%) scale(0);
+    width: 10px;
+    height: 10px;
+    background-color: var(--accent-primary);
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+}
+
+/* Checked state */
+.radio-option input[type="radio"]:checked + label::before {
+    border-color: var(--accent-primary);
+}
+
+.radio-option input[type="radio"]:checked + label::after {
+    transform: translateY(-50%) scale(1);
+}
+
+/* Focus state for accessibility */
+.radio-option input[type="radio"]:focus + label::before {
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+}
+
+/* === Notice Banner === */
+.notice-banner {
+    background-color: rgba(252, 211, 77, 0.1); /* Amber-300 with 10% opacity */
+    border: 1px solid #FBBF24; /* Amber-400 */
+    color: #FDE68A; /* Amber-200 */
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+}
+
+.notice-banner p {
+    margin: 0;
+    font-weight: 500;
+}
+
+.notice-banner .close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    transition: color 0.2s ease;
+}
+
+.notice-banner .close-btn:hover {
+    color: var(--text-primary);
+}
+
+/* === Log Viewer Page === */
+.log-page-container {
+    display: grid;
+    grid-template-columns: 350px 1fr; /* Sidebar and main content */
+    gap: 1.5rem; /* 24px */
+    height: calc(100vh - 150px); /* Adjust height as needed */
+    max-width: 1400px;
+    margin: 1.5rem auto;
+}
+
+.log-sidebar {
+    background: rgba(30, 41, 59, 0.5); /* slate-800/50 */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem; /* rounded-2xl */
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.log-viewer {
+    background: rgba(15, 23, 42, 0.5); /* slate-900/50 */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+/* === Log Toggle Buttons === */
+.log-toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.log-toggle-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    background-color: transparent;
+    color: var(--text-secondary);
+    border-radius: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.log-toggle-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.log-toggle-btn.active {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: var(--bg-primary);
+    font-weight: 600;
+}
+
+/* === Log List Items === */
+.log-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 0.5rem; /* For scrollbar spacing */
+}
+
+.log-item {
+    display: block;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    margin-bottom: 0.25rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.log-item:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.log-item.selected {
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
+    font-weight: 600;
+}
+
+.no-logs-message {
+    color: var(--text-secondary);
+    text-align: center;
+    padding-top: 2rem;
+}
+
+/* === Log Viewer Tables === */
+.log-viewer table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+}
+
+.log-viewer th,
+.log-viewer td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.log-viewer th {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.log-viewer td {
+    color: var(--text-primary);
+}
+
+.log-viewer tr:last-child td {
+    border-bottom: none;
+}
