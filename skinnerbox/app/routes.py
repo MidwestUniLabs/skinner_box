@@ -327,7 +327,8 @@ def trial_record():
         }
         return jsonify(response)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logging.exception("Error in /trial/record endpoint")
+        return jsonify({"error": "An internal error has occurred."}), 500
 #endregion
 #endregion Trial Page
 
