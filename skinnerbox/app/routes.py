@@ -10,6 +10,7 @@ from openpyxl import Workbook
 import json
 from functools import wraps
 from flask import abort, make_response
+import logging
 import skinnerbox.app.trial_state_machine as statemachine
 from cryptography.fernet import Fernet
 from flask_limiter import Limiter
@@ -300,7 +301,8 @@ def trial_config():
             'interactionType': interaction_type
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logging.exception("Error in /trial/config endpoint")
+        return jsonify({"error": "An internal error has occurred."}), 500
 
 
 @app.route('/trial/record', methods=['POST'])
