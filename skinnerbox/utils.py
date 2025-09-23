@@ -20,8 +20,11 @@ def load_settings():
     """Load settings from the configuration file"""
     try:
         with open(app_config.settings_path, 'r') as file:
+            # Check if the file is empty
+            if os.fstat(file.fileno()).st_size == 0:
+                return {}
             settings = json.load(file)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         settings = {}
     return settings
 

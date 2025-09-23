@@ -3,7 +3,9 @@ from datetime import datetime
 from flask import render_template, request, jsonify, redirect, send_file, send_from_directory, url_for
 import requests
 from skinnerbox.app import app_config, gpio, app
+from skinnerbox.app.app_config import temp_directory
 from skinnerbox.app.trial_state_machine import TrialStateMachine
+from skinnerbox.app.type_defs import TrialState
 from skinnerbox.utils import list_log_files_sorted, load_settings, save_settings
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook
@@ -24,7 +26,6 @@ limiter.init_app(app)
 
 settings_path = app_config.settings_path
 log_directory = app_config.log_directory
-temp_directory = app_config.temp_directory
 trial_state_machine = TrialStateMachine()
 
 # Cloud Run URL
@@ -256,8 +257,10 @@ def test_io():
 @app.route('/trial', methods=['POST'])
 def route_trial_page():
     settings = load_settings()  # Load settings
-    if(getattr(trial_state_machine, 'state', 'Idle') == 'Running'):
-        return render_template('TrialPage.html', settings=settings)
+    if(getattr(trial_state_machine, 'state', 'Idle') == 'RUNNING'):
+        trial_number = datetime.now().strftime("%Y%m%d%H%M%S")
+        runner_name = load_token("username") or "Default Runner"
+        return render_template('TrialPage.html', settings=settings, trial_number=trial_number, runner_name=runner_name)
     else:
         settings = load_settings()  # Load settings
         # Perform operations based on settings...
@@ -266,8 +269,26 @@ def route_trial_page():
 @app.route('/manuallyEndTrial', methods=['POST'])
 def manuallyEndTrial(): # Stops the trial
     if trial_state_machine.finish_trial("Manually Ended"):
-        return redirect(url_for('route_summary_page'))
+        return redirect(url_for('log_viewer', file=trial_state_machine.trial_completed_log_file))
     return redirect(url_for('trial_settings'))
+
+@app.route('/trial/config')
+def trial_config():
+    """Returns the current trial configuration for the frontend."""
+    global trial_state_machine
+    try:
+        settings = getattr(trial_state_machine, 'settings', {})
+        goal = int(settings.get('goal', 0))
+        duration_minutes = int(settings.get('duration', 0))
+        
+        config = {
+            'targetScore': goal,
+            'targetTimeSeconds': duration_minutes * 60
+        }
+        return jsonify(config)
+    except Exception as e:
+        logging.exception("Error in /trial/config endpoint")
+        return jsonify({"error": "An internal error has occurred."}), 500
 
 @app.route('/trial/status')
 def trial_status(): # Returns the current status of the trial
@@ -275,10 +296,11 @@ def trial_status(): # Returns the current status of the trial
     try:
         # This returns the real-time values of countdown and current iteration
         trial_status = {
-            'timeRemaining': getattr(trial_state_machine, 'timeRemaining', None),
-            'currentIteration': getattr(trial_state_machine, 'currentIteration', 0),
-            'state': getattr(trial_state_machine, 'state', 'Idle'),
-            'endStatus': getattr(trial_state_machine, 'endStatus', None)
+            'timeRemaining': getattr(trial_state_machine, 'time_remaining', None),
+            'currentIteration': getattr(trial_state_machine, 'current_iteration', 0),
+            'state': getattr(trial_state_machine, 'state', TrialState.IDLE).value,
+            'endStatus': getattr(trial_state_machine, 'end_status', None),
+            'elapsedTime': getattr(trial_state_machine, 'elapsed_time', 0)
         }
         return jsonify(trial_status)
     except Exception as e:
@@ -287,8 +309,8 @@ def trial_status(): # Returns the current status of the trial
 
 
 #region Trial API for UI
-@app.route('/trial/config', methods=['GET'])
-def trial_config():
+@app.route('/trial/config_old', methods=['GET'])
+def trial_config_old():
     """Return trial configuration for the UI."""
     try:
         # Prefer the state machine settings if already loaded
@@ -322,13 +344,24 @@ def trial_record():
 
         # Respond with updated status
         response = {
-            'currentIteration': getattr(trial_state_machine, 'currentIteration', 0),
-            'timeRemaining': getattr(trial_state_machine, 'timeRemaining', None)
+            'currentIteration': getattr(trial_state_machine, 'current_iteration', 0),
+            'timeRemaining': getattr(trial_state_machine, 'time_remaining', None)
         }
         return jsonify(response)
     except Exception as e:
         logging.exception("Error in /trial/record endpoint")
         return jsonify({"error": "An internal error has occurred."}), 500
+
+@app.route('/trial/check_completion')
+def check_trial_completion():
+    global trial_state_machine
+    if trial_state_machine.trial_completed_log_file:
+        log_file = trial_state_machine.trial_completed_log_file
+        trial_state_machine.trial_completed_log_file = None  # Reset after reading
+        return jsonify({"completed": True, "log_file": log_file})
+    else:
+        return jsonify({"completed": False})
+
 #endregion
 #endregion Trial Page
 
@@ -340,10 +373,17 @@ def trial_settings(): # Displays the trial settings with the settings loaded fro
 
 @app.route('/trial-settings/update', methods=['POST'])
 def update_trial_settings():
-    # This part is perfect
     settings = load_settings()
+    
+    # Handle all form fields
     for key in request.form:
         settings[key] = request.form[key]
+    
+    # Handle checkboxes that might not be present in form data
+    # If allowOvertime is not in the form data, it means the checkbox was unchecked
+    if 'allowOvertime' not in request.form:
+        settings['allowOvertime'] = 'off'
+    
     save_settings(settings)
 
     # Instead of redirecting, return a JSON response
@@ -353,15 +393,21 @@ def update_trial_settings():
 def start_trial():
     global trial_state_machine
     settings = load_settings()  # Load settings
-    if trial_state_machine.state == 'Running':
-        return render_template('TrialPage.html', settings=settings)
-    elif trial_state_machine.state == 'Idle':
+    if trial_state_machine.state == TrialState.RUNNING:
+        trial_number = datetime.now().strftime("%Y%m%d%H%M%S")
+        runner_name = load_token("username") or "Default Runner"
+        return render_template('TrialPage.html', settings=settings, trial_number=trial_number, runner_name=runner_name)
+    elif trial_state_machine.state == TrialState.IDLE:
         if trial_state_machine.start_trial():
-            return render_template('TrialPage.html', settings=settings)
-    elif trial_state_machine.state == 'Completed':
+            trial_number = datetime.now().strftime("%Y%m%d%H%M%S")
+            runner_name = load_token("username") or "Default Runner"
+            return render_template('TrialPage.html', settings=settings, trial_number=trial_number, runner_name=runner_name)
+    elif trial_state_machine.state == TrialState.COMPLETED:
         trial_state_machine = TrialStateMachine()
         if trial_state_machine.start_trial():
-            return render_template('TrialPage.html', settings=settings)
+            trial_number = datetime.now().strftime("%Y%m%d%H%M%S")
+            runner_name = load_token("username") or "Default Runner"
+            return render_template('TrialPage.html', settings=settings, trial_number=trial_number, runner_name=runner_name)
         return render_template('TrialSettings.html', settings=settings)
 #endregion Trial Settings
 
@@ -369,7 +415,8 @@ def start_trial():
 @app.route('/log-viewer', methods=['GET', 'POST'])
 def log_viewer(): # Displays the log files in the log directory
     log_files = list_log_files_sorted(log_directory)  # Get sorted list of log files
-    return render_template('LogPage.html', log_files=log_files)
+    selected_file = request.args.get('file')
+    return render_template('LogPage.html', log_files=log_files, selected_file=selected_file)
 
 #TODO These can't be secure right?
 @app.route('/log-viewer/download-raw/<filename>')
@@ -449,24 +496,52 @@ def download_excel_log_file(filename):
 
 @app.route('/log-viewer/view-log/<filename>')
 def view_log(filename):
-    """
-    Fetches and returns the contents of a local log file as JSON.
-    """
     filename = secure_filename(filename)
     file_path = os.path.join(log_directory, filename)
 
     if not os.path.isfile(file_path):
-        print(f"Log file not found: {file_path}")
         return jsonify({"error": "Log file not found."}), 404
 
     try:
-        with open(file_path, 'r') as file:
-            trial_data = json.load(file)  # Assuming logs are JSON formatted
+        with open(file_path, 'r') as f:
+            trial_data = json.load(f)
 
-        return jsonify(trial_data)
+        entries = trial_data.get('trial_entries', [])
+        total_rewards = sum(1 for entry in entries if entry.get('reward'))
+        counts_by_type = {}
+        for entry in entries:
+            t = entry.get('type')
+            counts_by_type[t] = counts_by_type.get(t, 0) + 1
+
+        start_time_str = trial_data.get('start_time')
+        end_time_str = trial_data.get('end_time')
+        duration_seconds = 0
+        if start_time_str and end_time_str:
+            try:
+                start_dt = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
+                end_dt = datetime.strptime(end_time_str, '%Y-%m-%d %H:%M:%S')
+                duration_seconds = (end_dt - start_dt).total_seconds()
+            except ValueError:
+                # Handle cases where the datetime format might be different
+                pass
+
+        metrics = {
+            'pi_id': trial_data.get('pi_id'),
+            'status': trial_data.get('status'),
+            'start_time': start_time_str,
+            'end_time': end_time_str,
+            'duration_seconds': duration_seconds,
+            'total_interactions': trial_data.get('total_interactions', 0),
+            'total_rewards': total_rewards,
+            'total_no_reward': len(entries) - total_rewards,
+            'counts_by_type': counts_by_type,
+            'trial_entries': entries
+        }
+
+        return jsonify(metrics)
 
     except Exception as e:
-        print(f"Error reading log file: {e}")
+        app.logger.error(f"Error processing log file '{filename}': {e}")
         return jsonify({"error": "Error loading log content."}), 500
 
 @app.route('/log-viewer/push-log', methods=['POST'])
@@ -723,89 +798,3 @@ def Get_Protected_Data():
         return None
 #endregion
 
-@app.route("/summary_page")
-def route_summary_page():
-    # Build trial logs list and compute summary from latest or selected log
-    log_files = list_log_files_sorted(log_directory)
-
-    selected_log = None
-    trial_data = {}
-    metrics = {
-        'pi_id': None,
-        'status': None,
-        'start_time': None,
-        'end_time': None,
-        'duration_seconds': 0,
-        'duration_display': '00:00:00',
-        'total_interactions': 0,
-        'total_rewards': 0,
-        'total_no_reward': 0,
-        'counts_by_type': {},
-    }
-
-    if log_files:
-        # Support selecting a specific log via query param
-        requested_file = request.args.get('file')
-        if requested_file:
-            candidate = secure_filename(requested_file)
-            if candidate in log_files:
-                selected_log = candidate
-        if not selected_log:
-            selected_log = log_files[0]
-
-        file_path = os.path.join(log_directory, selected_log)
-        try:
-            with open(file_path, 'r') as f:
-                trial_data = json.load(f)
-
-            entries = trial_data.get('trial_entries', [])
-            total_rewards = sum(1 for entry in entries if entry.get('reward'))
-            counts_by_type = {}
-            for entry in entries:
-                t = entry.get('type')
-                counts_by_type[t] = counts_by_type.get(t, 0) + 1
-
-            # Compute duration
-            start_time_str = trial_data.get('start_time')
-            end_time_str = trial_data.get('end_time')
-            duration_seconds = 0
-            duration_display = '00:00:00'
-            try:
-                if start_time_str and end_time_str:
-                    start_dt = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
-                    end_dt = datetime.strptime(end_time_str, '%Y-%m-%d %H:%M:%S')
-                    duration_seconds = int((end_dt - start_dt).total_seconds())
-                    hours = duration_seconds // 3600
-                    minutes = (duration_seconds % 3600) // 60
-                    seconds = duration_seconds % 60
-                    duration_display = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-            except Exception:
-                pass
-
-            metrics = {
-                'pi_id': trial_data.get('pi_id'),
-                'status': trial_data.get('status'),
-                'start_time': start_time_str,
-                'end_time': end_time_str,
-                'duration_seconds': duration_seconds,
-                'duration_display': duration_display,
-                'total_interactions': trial_data.get('total_interactions', 0),
-                'total_rewards': total_rewards,
-                'total_no_reward': max(len(entries) - total_rewards, 0),
-                'counts_by_type': counts_by_type,
-            }
-        except Exception as e:
-            print(f"Error loading log '{selected_log}' for summary: {e}")
-
-    trial_summary = {
-        'total_trials': len(log_files),
-    }
-
-    return render_template(
-        'SummaryPage.html',
-        trial_logs=log_files,
-        selected_log=selected_log,
-        trial_summary=trial_summary,
-        trial_data=trial_data,
-        metrics=metrics,
-    )

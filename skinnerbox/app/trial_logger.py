@@ -1,56 +1,66 @@
 import asyncio
 import aiofiles
-from skinnerbox.app.typeDefs import *
+import json
+import os
+from datetime import datetime
+from skinnerbox.app.type_defs import *
+from skinnerbox.app import app_config
 
-class Trial_Logger:
+class TrialLogger:
     """
     Logs trial data asynchronously using an asyncio.Queue and a writer task.
     """
     def __init__(self, filename: str, subject_info: SubjectInfo, experiment_info: ExperimentInfo):
-        self.filename = filename
+        # Keep the base filename for UI routes; compute full path for saving
+        self.filename = filename  # e.g., 'log_MM_DD_YY_HH_MM_SS.json'
+        self.filepath = os.path.join(app_config.log_directory, filename)
         self.subject_info = subject_info
         self.experiment_info = experiment_info
         self.queue = asyncio.Queue()
-        self.writer_task = None # To hold background task
+        self.writer_task = None  # Background consumer task
+        self.entries = []  # Accumulated trial entries for JSON output
+        self.start_wall_clock = datetime.now()
+        self.status = "Running"
 
     async def _write_header(self):
-        """Asynchronously writes the header to the file."""
-        async with aiofiles.open(self.filename, 'w', newline='') as f:
-            # aiofiles doesn't have a direct csv writer, so we format strings
-            await f.write(f'# Subject ID:,{self.subject_info.SubjectID}\n')
-            await f.write(f'# Species:,{self.subject_info.Species_And_Strain}\n')
-            await f.write(f'# Experimenter:,{self.experiment_info.Researcher_Name}\n')
-            await f.write(f'# Session_Number:,{self.experiment_info.Session_Number}\n')
-            await f.write(f'# Reward Type:,{self.experiment_info.RewardType}\n')
-            await f.write(f'# Interaction Type:,{self.experiment_info.InteractionType}\n')
-            await f.write(f'# Stimulus Type:,{self.experiment_info.StimulusType}\n')
-            await f.write('\n')
-            await f.write('Timestamp,Event,Data\n')
+        """No-op placeholder maintained for compatibility."""
+        return
 
     async def _writer_loop(self):
-        """The consumer task that pulls from the queue and writes to disk."""
-        # Open the file once and keep it open for the duration of the loop
-        async with aiofiles.open(self.filename, 'a', newline='') as f:
-            while True:
-                # Wait for an item to appear in the queue
-                entry = await self.queue.get()
-                
-                # A 'None' entry is the signal to stop
-                if entry is None:
-                    self.queue.task_done()
-                    break
-                
-                # Write the entry to the file
-                await f.write(f'{entry.timestamp},{entry.event},{entry.data}\n')
-                
-                # Signal that the task is done
+        """Consume log entries and accumulate them for final JSON write on stop."""
+        while True:
+            entry = await self.queue.get()
+            if entry is None:
                 self.queue.task_done()
+                break
+
+            # Map LogEntry -> viewer schema
+            entry_num = len(self.entries) + 1
+            event_type_name = entry.event.name if isinstance(entry.event, EventType) else str(entry.event)
+            is_interaction = (event_type_name == "INTERACTION_RECIEVED")
+            # Infer reward from data string containing "(Correct)"
+            reward_given = isinstance(entry.data, str) and "Correct" in entry.data
+
+            normalized = {
+                "entry_num": entry_num,
+                "rel_time": float(entry.timestamp) if entry.timestamp is not None else 0.0,
+                "type": "Interaction" if is_interaction else str(entry.event),
+                "reward": bool(reward_given),
+                "interactions_between": 0,
+                "time_between": 0.0,
+            }
+            self.entries.append(normalized)
+            self.queue.task_done()
 
     async def log_event(self, timestamp: float, event: EventType, data: str):
         """The producer method: quickly adds a log entry to the queue."""
         entry = LogEntry(timestamp, event, data)
         await self.queue.put(entry)
     
+    def set_status(self, status: str):
+        """Set final status to be written to JSON (e.g., 'Goal Reached', 'Time Limit Reached', 'Manually Ended')."""
+        self.status = status
+
     async def start(self):
         """Starts the logger by writing the header and creating the writer task."""
         print("Starting logger...")
@@ -67,4 +77,20 @@ class Trial_Logger:
         await self.queue.join()
         # Wait for the writer task to finish completely
         await self.writer_task
+
+        # Compose JSON structure and write once at the end
+        end_wall_clock = datetime.now()
+        trial_json = {
+            "pi_id": str(self.subject_info.subject_id),
+            "status": self.status,
+            "start_time": self.start_wall_clock.strftime('%Y-%m-%d %H:%M:%S'),
+            "end_time": end_wall_clock.strftime('%Y-%m-%d %H:%M:%S'),
+            "total_interactions": sum(1 for e in self.entries if e.get("type") == "Interaction"),
+            "trial_entries": self.entries,
+        }
+
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
+        async with aiofiles.open(self.filepath, 'w') as f:
+            await f.write(json.dumps(trial_json))
         print("Logger stopped.")

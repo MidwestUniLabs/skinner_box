@@ -171,7 +171,7 @@ def stop_motor(motor):
         return
 
 # Stims
-def flashLightStim(color, wait_ms=10):
+def flash_light_stim(color, wait_ms=10):
     """ Flash the light stimulus safely and correctly. """
     try:
         r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16)

@@ -1,333 +1,240 @@
-# app/state_machine.py
-import threading
 import json
+import threading
+import asyncio
 import os
-import time
+from datetime import datetime
+from skinnerbox.app.trial_logger import TrialLogger, SubjectInfo, ExperimentInfo
+from time import time
+from skinnerbox.app.type_defs import *
 from skinnerbox.app import gpio
-from dotenv import load_dotenv
-from skinnerbox.app.app_config import log_directory
 
-class TrialStateMachine: #TODO Clean up the code
-    """
-    A state machine to manage the trial process in a behavioral experiment.
-    Attributes:
-        state (str): The current state of the trial.
-        lock (threading.Lock): A lock to ensure thread safety.
-        currentIteration (int): The current iteration of the trial.
-        settings (dict): The settings loaded from a configuration file.
-        startTime (float): The start time of the trial.
-        interactable (bool): Whether the system is currently interactable.
-        lastSuccessfulInteractTime (float): The time of the last successful interaction.
-        lastStimulusTime (float): The time of the last stimulus.
-        stimulusCooldownThread (threading.Timer): The thread handling stimulus cooldown.
-        log_path (str): The path to the log file.
-        interactions_between (int): The number of interactions between successful interactions.
-        time_between (float): The time between successful interactions.
-        total_interactions (int): The total number of interactions.
-        total_time (float): The total time of the trial.
-        interactions (list): A list of interactions during the trial.
-    Methods:
-        load_settings(): Loads settings from a configuration file.
-        start_trial(): Starts the trial.
-        pause_trial(): Pauses the trial.
-        resume_trial(): Resumes the trial.
-        stop_trial(): Stops the trial.
-        run_trial(goal, duration): Runs the trial logic.
-        lever_press(): Handles a lever press interaction.
-        nose_poke(): Handles a nose poke interaction.
-        queue_stimulus(): Queues a stimulus after a cooldown period.
-        give_stimulus(): Gives a stimulus immediately.
-        light_stimulus(): Handles the light stimulus.
-        noise_stimulus(): Handles the noise stimulus.
-        give_reward(): Gives a reward based on the settings.
-        add_interaction(interaction_type, reward_given, interactions_between=0, time_between=''): Logs an interaction.
-        push_log(): Writes the log to a file.
-        finish_trial(): Finishes the trial and logs the results.
-        error(): Handles errors and sets the state to 'Error'.
-        pause_trial_logic(): Logic to pause the trial.
-        resume_trial_logic(): Logic to resume the trial.
-        handle_error(): Logic to handle errors.
-    """
+class TrialStateMachine:
     def __init__(self):
-        self.state = 'Idle'
-        self.lock = threading.Lock()
-        self.currentIteration = 0
         self.settings = {}
-        self.startTime = None
+        self.subject_info = SubjectInfo(subject_id=0, species_and_strain="", sex="", date_of_birth="", body_weight_post_session=0, body_weight_pre_session=0, deprivation_level="")
+        self.experiment_info = ExperimentInfo(experiment_id="", researcher_name="", experimental_group="", session_number=0, reward_type=RewardTypes.FOOD, interaction_type=InteractionTypes.LEVER_PRESS, stimulus_type=StimulusTypes.NONE_STIM)
+        self.state = TrialState.IDLE
+        self.start_time = None
+        self.lock = threading.Lock()
+        self.current_iteration = 0
+        self.interactions = []
         self.interactable = True
-        self.lastSuccessfulInteractTime = None
-        self.lastStimulusTime = 0.0
-        self.stimulusCooldownThread = None
-        self.log_path = log_directory
-        self.interactions_between = 0
-        self.time_between = 0.0
+        self.last_successful_interact_time = None
+        self.last_stimulus_time = 0.0
+        self.stimulus_cooldown_thread = None
         self.total_interactions = 0
         self.elapsed_time = 0
-        self.endStatus = None
-        self.interactions = []
+        self.end_status = None
+        self.logger = None
+        self.trial_completed_log_file = None
+        self.loop = None
+        self.logger_thread = None
 
-    def load_settings(self):
-        # Implementation of loading settings from file
+    def start_trial(self):
+        if self.state != TrialState.IDLE: return False
+        
+        # Load Settings
         try:
-            with open('app/trial_config.json', 'r') as file:
+            config_path = os.path.join(os.path.dirname(__file__), 'trial_config.json')
+            with open(config_path, 'r') as file:
                 self.settings = json.load(file)
         except FileNotFoundError:
             self.settings = {}
-            
-    def start_trial(self):
-        with self.lock:
-            if self.state == 'Idle':
-                self.load_settings()
-                goal = int(self.settings.get('goal', 0))
-                duration = int(self.settings.get('duration', 0)) * 60
-                self.timeRemaining = duration
-                self.currentIteration = 0
-                self.lastStimulusTime = time.time()
-                self.state = 'Running'
-                # Format the current time to include date and time in the filename
-                # YYYY_MM_DD_HH_MM_SS
-                safe_time_str = time.strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
-                # Update log_path to include the date and time
-                self.log_path = log_directory + f"log_{safe_time_str}.json"
-                threading.Thread(target=self.run_trial, args=(goal, duration)).start()
-                self.give_stimulus()
-                return True
-            return False
 
-    def pause_trial(self):
-        with self.lock:
-            if self.state == 'Running':
-                self.state = 'Paused'
-                self.pause_trial_logic()
-                return True
-            return False
+        goal = int(self.settings.get('goal', 0))
+        duration = int(self.settings.get('duration', 0)) * 60
+        
+        info_builder = InfoBuilder(self.settings)
+        self.subject_info = info_builder.build_subject_info()
+        self.experiment_info = info_builder.build_experiment_info()
 
-    def resume_trial(self):
-        with self.lock:
-            if self.state == 'Paused':
-                self.state = 'Running'
-                self.resume_trial_logic()
-                return True
-            return False
+        self.time_remaining = duration
+        self.current_iteration = 0
+        self.last_stimulus_time = time()
 
-    def stop_trial(self):
-        with self.lock:
-            if self.state in ['Preparing', 'Running', 'Paused']:
-                self.state = 'Idle'
-                return True
-            return False
+        self.state = TrialState.RUNNING
+        
+        safe_time_str = datetime.now().strftime("%m_%d_%y_%H_%M_%S").replace(":", "_")
+        log_filename = f"log_{safe_time_str}.json"
+        
+        self.logger = TrialLogger(log_filename, self.subject_info, self.experiment_info)
+        
+        # Run the logger in a separate thread with its own event loop
+        self.logger_thread = threading.Thread(target=self.run_logger, daemon=True)
+        self.logger_thread.start()
+        
+        # Wait a bit for logger to start
+        threading.Event().wait(0.1)
+
+        threading.Thread(target=self.run_trial, args=(goal, duration)).start()
+        self.give_stimulus()
+
+        return True
+
+    def run_logger(self):
+        """Run the logger with its own event loop in a separate thread."""
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_until_complete(self.logger.start())
+        # Keep the loop running for log_event calls
+        self.loop.run_forever()
+
+    def stop_trial(self, reason):
+        self.state = TrialState.IDLE
+        if self.loop and self.logger:
+            # Set final status for JSON output
+            self.logger.set_status(reason)
+            asyncio.run_coroutine_threadsafe(
+                self.logger.log_event(self.get_time(), EventType.REWARD_GIVEN, f"Trial Stopped: {reason}"),
+                self.loop
+            )
+            asyncio.run_coroutine_threadsafe(self.logger.stop(), self.loop)
+            self.loop.call_soon_threadsafe(self.loop.stop)
+
+    def get_time(self) -> float:
+        if self.start_time is None:
+            return 0.0
+        return time() - self.start_time
 
     def run_trial(self, goal, duration):
         """
         Runs the trial for the given duration or until the goal interactions are reached.
         """
-        self.startTime = time.time()
-        self.currentIteration = 0  # Ensure iteration count starts at zero
-
-        # Assign interaction callbacks
+        self.start_time = time()
         interaction_type = self.settings.get('interactionType')
         if interaction_type == 'lever':
             gpio.lever.when_pressed = self.lever_press
         elif interaction_type == 'poke':
             gpio.poke.when_pressed = self.nose_poke
 
-        while self.state == 'Running':
-            self.elapsed_time = time.time() - self.startTime
-            self.timeRemaining = max(0, round(duration - self.elapsed_time, 2))
+        while self.state == TrialState.RUNNING:
+            self.elapsed_time = self.get_time()
+            self.time_remaining = max(0, round(duration - self.elapsed_time, 2))
             
             cooldown_time = float(self.settings.get('cooldown', 0))
-            # Updated stimulus trigger time check to use absolute times
-            if self.interactable and (time.time() - self.lastStimulusTime) >= cooldown_time:
-                print("No interaction in last cooldown period, Re-Stimulating")
+            if self.interactable and (time() - self.last_stimulus_time) >= cooldown_time:
                 self.give_stimulus()
-                self.lastStimulusTime = time.time()
+                self.last_stimulus_time = time()
             
-            # **Check if trial should finish**
-            if goal > 0 and self.currentIteration >= goal:  # Goal reached (only if goal is set)
-                self.elapsed_time = round(self.elapsed_time, 2)
-                self.finish_trial(endStatus="Goal Reached")
+            allow_overtime = self.settings.get('allowOvertime') == 'on'
+
+            if goal > 0 and self.current_iteration >= goal:  # Goal reached
+                self.finish_trial(end_status="Goal Reached")
                 break
 
-            elif duration > 0 and self.timeRemaining <= 0:  # Time limit reached (only if duration is set)
-                self.elapsed_time = round(self.elapsed_time, 2)
-                self.finish_trial(endStatus="Time Limit Reached")
+            if not allow_overtime and duration > 0 and self.time_remaining <= 0:  # Time limit reached and no overtime
+                self.finish_trial(end_status="Time Limit Reached")
                 break
-
-            time.sleep(0.1)  # Small sleep interval to reduce CPU usage
-
-    ## Interactions ##
-    def lever_press(self):
-        current_time = time.time()
-        self.total_interactions += 1
-
-        if self.state == 'Running' and self.interactable:
-            # Calculate time between only if the last interaction was when interactable was True
-            if self.lastSuccessfulInteractTime is not None:
-                self.time_between = (current_time - self.lastSuccessfulInteractTime).__round__(2)
-            else:
-                self.time_between = 0  # Default for the first successful interaction
-
-            self.interactable = False  # Disallow further interactions until reset
-            self.currentIteration += 1
-            self.give_reward()
-            self.add_interaction("Lever", True, self.interactions_between, self.time_between)
-            self.lastSuccessfulInteractTime = current_time  # Update only on successful interaction when interactable
-            self.interactions_between = 0
-        else:
-            self.add_interaction("Lever", False, self.interactions_between, 0)
-            self.interactions_between += 1
-
-    def nose_poke(self):
-        current_time = time.time()
-        self.total_interactions += 1
-
-        if self.state == 'Running' and self.interactable:
-            if self.lastSuccessfulInteractTime is not None:
-                self.time_between = (current_time - self.lastSuccessfulInteractTime).__round__(2)
-            else:
-                self.time_between = 0  # Default for the first successful interaction
-
-            self.interactable = False
-            self.currentIteration += 1
-            self.give_reward()
-            self.add_interaction("Poke", True, self.interactions_between, self.time_between)
-            self.lastSuccessfulInteractTime = current_time  # Update only on successful interaction when interactable
-            self.interactions_between = 0
-        else:
-            self.add_interaction("Poke", False, self.interactions_between, 0)
-            self.interactions_between += 1
-
-    ## Stimulus' ##
-    def queue_stimulus(self): # Give after cooldown
-        if(self.settings.get('stimulusType') == 'light' and self.interactable == False):
-            self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.light_stimulus)
-            self.stimulusCooldownThread.start()
-        elif(self.settings.get('stimulusType') == 'tone' and self.interactable == False):
-            self.stimulusCooldownThread = threading.Timer(float(self.settings.get('cooldown', 0)), self.noise_stimulus)
-            self.stimulusCooldownThread.start()
-
-    def give_stimulus(self): #Give immediately
-        if(self.settings.get('stimulusType') == 'light'):
-            self.light_stimulus()
-        elif(self.settings.get('stimulusType') == 'tone'):
-            self.noise_stimulus()
-        self.lastStimulusTime = time.time()  # Reset the timer after delivering the stimulus
-
-    def light_stimulus(self):
-        hex_color = self.settings.get('light-color')  # Html uses hexadecimal colors
-        gpio.flashLightStim(hex_color)
-        self.interactable = True
-        self.lastStimulusTime = time.time()
-
-    def noise_stimulus(self):
-        if(self.interactable == False):
-            #TODO Make noise
-            self.interactable = True
-
-    ## Reward ##
-    def give_reward(self):
-        if(self.settings.get('rewardType') == 'water'):
-            gpio.water()
-        elif(self.settings.get('rewardType') == 'food'):
-            gpio.feed()
-        self.queue_stimulus()
-
-    ## Logging ##
-    def add_interaction(self, interaction_type, reward_given, interactions_between=0, time_between=''):
-        entry = self.total_interactions
-        interaction_time = (time.time() - self.startTime).__round__(2)
-        
-        # Log the interaction
-        self.interactions.append([entry, interaction_time, interaction_type, reward_given, interactions_between, time_between])
-    
-    def log_manual_interaction(action_type):
-        log_entry = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "interaction": action_type
-        }
-
-        log_file = "manual_interactions.json"
-        try:
-            with open(log_file, "a") as f:
-                json.dump(log_entry, f)
-                f.write("\n")
-            print(f"Logged manual interaction: {action_type}")
-        except Exception as e:
-            print(f"Error logging interaction: {e}")
             
-    def push_log(self):
-        """
-        Converts trial logs to JSON format and writes them to a file.
-        """
-        load_dotenv()
-        pi_id = os.getenv("PI_ID")
+            threading.Event().wait(0.1)
 
-        log_data = {
-            "pi_id": pi_id,
-            "status": self.endStatus,
-            "start_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.startTime)),
-            "end_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.startTime + self.elapsed_time)),
-            "total_interactions": self.total_interactions,
-            "trial_entries": [
-                {
-                    "entry_num": entry[0],
-                    "rel_time": entry[1],
-                    "type": entry[2],
-                    "reward": entry[3],
-                    "interactions_between": entry[4],
-                    "time_between": entry[5]
-                }
-                for entry in self.interactions
-            ]
-        }
-
-        # Ensure log directory exists
-        if not os.path.exists(log_directory):
-            os.makedirs(log_directory)
-
-        log_filename = f"{self.log_path}"
-        with open(log_filename, 'w') as file:
-            json.dump(log_data, file, indent=4)
-
-        print(f"Log saved: {log_filename}")
-
-    def finish_trial(self, endStatus):
+    def finish_trial(self, end_status):
         with self.lock:
-            if self.state == 'Running':
-                self.state = 'Completed'
-                self.endStatus = endStatus
-                self.push_log()
-                print("Trial complete")
+            if self.state == TrialState.RUNNING:
+                self.state = TrialState.COMPLETED
+                self.end_status = end_status
+                self.trial_completed_log_file = self.logger.filename
+                if self.loop and self.logger:
+                    # Set final status for JSON output
+                    self.logger.set_status(end_status)
+                    asyncio.run_coroutine_threadsafe(
+                        self.logger.log_event(self.get_time(), EventType.REWARD_GIVEN, f"Trial Finished: {end_status}"),
+                        self.loop
+                    )
+                    asyncio.run_coroutine_threadsafe(self.logger.stop(), self.loop)
+                    self.loop.call_soon_threadsafe(self.loop.stop)
                 return True
             return False
 
-    def error(self):
-        with self.lock:
-            self.state = 'Error'
-            self.handle_error()
-            self.state = 'Idle'
+    def lever_press(self):
+        current_time = self.get_time()
+        self.total_interactions += 1
 
-    def pause_trial_logic(self):
-        """
-        Pauses the trial by disabling interactions.
-        """
-        self.interactable = False  # Prevent new interactions
-        self.state = 'Paused'
-        print("Trial Paused")
+        if self.state == TrialState.RUNNING and self.interactable:
+            if self.last_successful_interact_time is not None:
+                time_between = (current_time - self.last_successful_interact_time).__round__(2)
+            else:
+                time_between = 0
 
-    def resume_trial_logic(self):
-        """
-        Resumes the trial by enabling interactions.
-        """
-        self.interactable = True  # Allow new interactions
-        self.state = 'Running'
-        print("Trial Resumed")
+            self.interactable = False
+            self.current_iteration += 1
+            self.give_reward()
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(current_time, EventType.INTERACTION_RECIEVED, "Lever Press (Correct)"),
+                    self.loop
+                )
+            self.last_successful_interact_time = current_time
+        else:
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(current_time, EventType.INTERACTION_RECIEVED, "Lever Press (Incorrect)"),
+                    self.loop
+                )
 
-    def handle_error(self, error_message="An unknown error occurred"):
-        """
-        Handles errors by logging and changing state.
-        """
-        self.state = 'Error'
-        print(f"Error: {error_message}")
-        self.push_log()
+    def nose_poke(self):
+        current_time = self.get_time()
+        self.total_interactions += 1
 
+        if self.state == TrialState.RUNNING and self.interactable:
+            if self.last_successful_interact_time is not None:
+                time_between = (current_time - self.last_successful_interact_time).__round__(2)
+            else:
+                time_between = 0
+
+            self.interactable = False
+            self.current_iteration += 1
+            self.give_reward()
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(current_time, EventType.INTERACTION_RECIEVED, "Nose Poke (Correct)"),
+                    self.loop
+                )
+            self.last_successful_interact_time = current_time
+        else:
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(current_time, EventType.INTERACTION_RECIEVED, "Nose Poke (Incorrect)"),
+                    self.loop
+                )
+
+    def give_stimulus(self):
+        stimulus_type = self.settings.get('stimulusType')
+        if stimulus_type == 'light':
+            hex_color = self.settings.get('light-color')
+            gpio.flash_light_stim(hex_color)
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(self.get_time(), EventType.STIMULUS_GIVEN, "Light Stimulus"),
+                    self.loop
+                )
+        elif stimulus_type == 'tone':
+            # TODO: Play sound
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(self.get_time(), EventType.STIMULUS_GIVEN, "Tone Stimulus"),
+                    self.loop
+                )
+        
+        self.interactable = True
+        self.last_stimulus_time = time()
+
+    def give_reward(self):
+        reward_type = self.settings.get('rewardType')
+        if reward_type == 'water':
+            gpio.water()
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(self.get_time(), EventType.REWARD_GIVEN, "Water"),
+                    self.loop
+                )
+        elif reward_type == 'food':
+            gpio.feed()
+            if self.loop and self.logger:
+                asyncio.run_coroutine_threadsafe(
+                    self.logger.log_event(self.get_time(), EventType.REWARD_GIVEN, "Food"),
+                    self.loop
+                )
+        
+        cooldown = float(self.settings.get('cooldown', 0))
+        threading.Timer(cooldown, self.give_stimulus).start()

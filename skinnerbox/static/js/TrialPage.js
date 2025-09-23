@@ -7,15 +7,11 @@ const state = {
     timeRemaining: null,
     backendState: 'Idle',
     timerInterval: null,
+    mainInterval: null,
 };
 
 // --- DOM Elements ---
 const timerEl = document.getElementById('timer');
-const statusDisplay = {
-    ping: document.getElementById('status-indicator-ping'),
-    dot: document.getElementById('status-indicator-dot'),
-    text: document.getElementById('status-text'),
-};
 const forceStopBtn = document.getElementById('force-stop-btn');
 const recordPointBtn = document.getElementById('record-point-btn');
 const stopModal = document.getElementById('stop-modal');
@@ -26,6 +22,7 @@ const confirmStopBtn = document.getElementById('confirm-stop-btn');
 const scoreDisplay = document.getElementById('current-score-display');
 const scoreProgressText = document.getElementById('current-score-progress');
 const scoreProgressBar = document.getElementById('score-progress-bar');
+const targetScoreProgressEl = document.getElementById('target-score-progress');
 
 const timeProgressPercent = document.getElementById('time-progress-percent');
 const timeProgressBar = document.getElementById('time-progress-bar');
@@ -43,25 +40,13 @@ const formatTime = (totalSeconds) => {
 
 // --- UI Update Functions ---
 const updateUI = () => {
-    // Timer (prefer backend-derived elapsed if available and valid)
-    const canUseBackendElapsed = (
-        state.targetTimeSeconds > 0 &&
-        typeof state.timeRemaining === 'number' &&
-        state.timeRemaining <= state.targetTimeSeconds &&
-        (
-            (state.backendState === 'Running' && state.timeRemaining > 0) ||
-            (state.backendState === 'Completed' && state.timeRemaining >= 0)
-        )
-    );
-
-    const elapsed = canUseBackendElapsed
-        ? Math.max(0, state.targetTimeSeconds - state.timeRemaining)
-        : state.elapsedSeconds;
+    // Timer - use elapsed time directly
+    const elapsed = state.elapsedSeconds;
     timerEl.textContent = formatTime(elapsed);
 
     // Score
     scoreDisplay.textContent = state.currentScore;
-    scoreProgressText.textContent = `${state.currentScore}/${state.targetScore}`;
+    scoreProgressText.textContent = state.currentScore;
     const scorePercent = state.targetScore > 0 ? (state.currentScore / state.targetScore) * 100 : 0;
     scoreProgressBar.style.width = `${Math.min(scorePercent, 100)}%`;
 
@@ -74,12 +59,7 @@ const updateUI = () => {
     // Completion is driven by backend state only
 };
 
-const tick = () => {
-    if (!state.isRunning) return;
-    // Fallback timer only, backend will override via timeRemaining when available
-    state.elapsedSeconds++;
-    updateUI();
-};
+// Removed tick function - now using backend elapsed time
 
 // --- Core Logic ---
 const loadConfig = () => {
@@ -91,6 +71,7 @@ const loadConfig = () => {
                 if (typeof cfg.targetTimeSeconds === 'number') state.targetTimeSeconds = cfg.targetTimeSeconds;
                 if (targetScoreTotalEl) targetScoreTotalEl.textContent = state.targetScore;
                 if (targetScoreLabelEl) targetScoreLabelEl.textContent = state.targetScore;
+                if (targetScoreProgressEl) targetScoreProgressEl.textContent = state.targetScore;
                 if (targetTimeLabelEl) {
                     const mm = Math.floor(state.targetTimeSeconds / 60).toString().padStart(2, '0');
                     const ss = (state.targetTimeSeconds % 60).toString().padStart(2, '0');
@@ -104,40 +85,30 @@ const loadConfig = () => {
 const startTrial = async () => {
     await loadConfig();
     state.isRunning = true;
-    state.timerInterval = setInterval(tick, 1000);
+    // No need for timer interval - backend provides elapsed time
     updateUI();
 };
 
-const endTrial = (reason, statusClass, color) => {
+const endTrial = () => {
     if (!state.isRunning) return;
     state.isRunning = false;
-    clearInterval(state.timerInterval);
-    
-    statusDisplay.text.textContent = reason;
-    statusDisplay.text.className = `font-semibold text-sm ${statusClass}`;
-    statusDisplay.dot.className = `relative inline-flex rounded-full h-3 w-3 ${color}`;
-    statusDisplay.ping.classList.add('hidden');
-    
+    clearInterval(state.mainInterval);
+
     forceStopBtn.disabled = true;
-    recordPointBtn.disabled = true;
-    // Redirect to summary page after a short delay
-    setTimeout(() => {
-        window.location.href = '/summary_page';
-    }, 800);
+    if (recordPointBtn) recordPointBtn.disabled = true;
 };
 
 const stopTrial = () => {
-    fetch('/trial/stop', { method: 'POST' })
-        .then(() => {
-            endTrial('Stopped Manually', 'text-rose-400', 'bg-rose-500');
-        })
-        .catch(() => {
-            endTrial('Stopped Manually', 'text-rose-400', 'bg-rose-500');
-        });
+    // Create a form and submit it to navigate to the manuallyEndTrial route
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/manuallyEndTrial';
+    document.body.appendChild(form);
+    form.submit();
 };
 
-const completeTrial = (reason) => {
-    endTrial(reason, 'text-emerald-400', 'bg-emerald-500');
+const completeTrial = () => {
+    endTrial();
 };
 
 const fetchTrialStatus = () => {
@@ -153,21 +124,58 @@ const fetchTrialStatus = () => {
         if (typeof data.timeRemaining === 'number') {
             state.timeRemaining = data.timeRemaining;
         }
+        if (typeof data.elapsedTime === 'number') {
+            state.elapsedSeconds = Math.floor(data.elapsedTime);
+        }
         if (typeof data.state === 'string') {
             state.backendState = data.state;
         }
-        if (timeRemainingEl) timeRemainingEl.textContent = (typeof state.timeRemaining === 'number') ? state.timeRemaining : '';
+        if (timeRemainingEl) timeRemainingEl.textContent = (typeof state.timeRemaining === 'number') ? Math.round(state.timeRemaining) : '';
         if (currentIterationEl) currentIterationEl.textContent = state.currentScore ?? '';
         updateUI();
-        if (data && data.state === 'Completed' && data.endStatus) {
-            completeTrial(data.endStatus);
+        if (state.isRunning && data && (data.state === 'Completed' || data.state === 'Stopped' || data.state === 'Error')) {
+            if (data.state === 'Completed') {
+                completeTrial();
+            } else {
+                endTrial();
+            }
         }
     })
     .catch(error => console.error('Error fetching trial status:', error));
 
 }
 
-setInterval(fetchTrialStatus, 1000);
+const checkCompletion = () => {
+    if (document.hidden) return;
+    fetch('/trial/check_completion')
+        .then(response => response.json())
+        .then(data => {
+            if (data.completed && data.log_file) {
+                // Construct the URL for the log viewer page with the log file as a query parameter
+                const logFile = encodeURIComponent(data.log_file.split('/').pop());
+                window.location.href = `/log-viewer?file=${logFile}`;
+            }
+        })
+        .catch(error => console.error('Error checking trial completion:', error));
+};
+
+const handleVisibilityChange = () => {
+    if (document.hidden) {
+        clearInterval(state.mainInterval);
+    } else if (state.isRunning) {
+        // Run once on visibility change, then set interval
+        fetchTrialStatus();
+        checkCompletion();
+        state.mainInterval = setInterval(() => {
+            fetchTrialStatus();
+            if (state.isRunning) {
+                checkCompletion();
+            }
+        }, 1000);
+    }
+};
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
 
 // --- Modal Logic ---
 const openModal = () => {
@@ -194,27 +202,32 @@ confirmStopBtn.addEventListener('click', () => {
     closeModal();
 });
 
-recordPointBtn.addEventListener('click', () => {
-    if (!state.isRunning) return;
-    fetch('/trial/record', { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            if (data && !data.error) {
-                // Keep UI score in sync with backend iteration if provided
-                if (typeof data.currentIteration === 'number') {
-                    state.currentScore = data.currentIteration;
-                } else {
-                    state.currentScore += 1;
+if (recordPointBtn) {
+    recordPointBtn.addEventListener('click', () => {
+        if (!state.isRunning) return;
+        fetch('/trial/record', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data && !data.error) {
+                    // Keep UI score in sync with backend iteration if provided
+                    if (typeof data.currentIteration === 'number') {
+                        state.currentScore = data.currentIteration;
+                    } else {
+                        state.currentScore += 1;
+                    }
+                    updateUI();
                 }
+            })
+            .catch(() => {
+                // Fallback to local increment
+                state.currentScore += 1;
                 updateUI();
-            }
-        })
-        .catch(() => {
-            // Fallback to local increment
-            state.currentScore += 1;
-            updateUI();
-        });
-});
+            });
+    });
+}
 
 // --- Initialisation ---
-startTrial();
+startTrial().then(() => {
+    // Initial run
+    handleVisibilityChange();
+});

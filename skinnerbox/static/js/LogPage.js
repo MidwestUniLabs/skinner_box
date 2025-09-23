@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     el.textContent = filename;
                 }
                 el.href = '#';
+                el.dataset.filename = filename; // Add this line
                 el.onclick = (e) => {
                     e.preventDefault();
                     viewLocalLog(filename, el);
@@ -85,40 +86,106 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderLogDetails = (trialInfo) => {
-        const startTime = new Date(trialInfo.start_time).toLocaleString();
-        const totalTime = ((new Date(trialInfo.end_time) - new Date(trialInfo.start_time)) / 1000).toFixed(2);
-        
-        let entriesHtml = '<p class="mt-4">No trial entries available.</p>';
-        const entries = trialInfo.trial_entries || trialInfo.valuesInfoPosition;
+        const {
+            pi_id = 'N/A',
+            status = 'N/A',
+            start_time = 'N/A',
+            end_time = 'N/A',
+            total_interactions = 0,
+            total_rewards = 0,
+            total_no_reward = 0,
+            counts_by_type = {},
+            trial_entries = [],
+        } = trialInfo;
 
-        if (entries && entries.length > 0) {
-            entriesHtml = `
-                <table>
-                    <tr>
-                        <th>Entry</th><th>Time (s)</th><th>Type</th>
-                        <th>Reward</th><th>Interactions Between</th><th>Time Between (s)</th>
-                    </tr>
-                    ${entries.map(e => `
+        const duration = (new Date(end_time) - new Date(start_time)) / 1000;
+        const duration_display = isNaN(duration) ? 'N/A' : `${duration.toFixed(2)}s`;
+
+        const countsByTypeHtml = Object.entries(counts_by_type).map(([key, value]) => `
+            <div class="bg-slate-800/60 p-3 rounded border border-slate-700">
+                <p class="text-slate-400 text-sm">${key}</p>
+                <p class="text-white text-lg">${value}</p>
+            </div>
+        `).join('');
+
+        const entriesHtml = trial_entries.length > 0 ? `
+            <div class="overflow-x-auto">
+                <h3 class="text-lg font-semibold text-white mb-2">Entries</h3>
+                <table class="min-w-full text-sm text-left text-slate-300">
+                    <thead class="text-xs uppercase bg-slate-800/60 text-slate-400">
                         <tr>
-                            <td>${e.entry_num}</td>
-                            <td>${(e.rel_time || 0).toFixed(2)}</td>
-                            <td>${e.type}</td>
-                            <td>${e.reward ? 'Yes' : 'No'}</td>
-                            <td>${e.interactions_between}</td>
-                            <td>${(e.time_between || 0).toFixed(2)}</td>
+                            <th class="px-4 py-2">#</th>
+                            <th class="px-4 py-2">Rel Time</th>
+                            <th class="px-4 py-2">Type</th>
+                            <th class="px-4 py-2">Reward</th>
+                            <th class="px-4 py-2">Interactions Between</th>
+                            <th class="px-4 py-2">Time Between</th>
                         </tr>
-                    `).join('')}
+                    </thead>
+                    <tbody>
+                        ${trial_entries.map(e => `
+                            <tr class="border-b border-slate-800">
+                                <td class="px-4 py-2 font-mono">${e.entry_num}</td>
+                                <td class="px-4 py-2 font-mono">${(e.rel_time || 0).toFixed(2)}</td>
+                                <td class="px-4 py-2">${e.type}</td>
+                                <td class="px-4 py-2">${e.reward ? 'Yes' : 'No'}</td>
+                                <td class="px-4 py-2 font-mono">${e.interactions_between}</td>
+                                <td class="px-4 py-2 font-mono">${(e.time_between || 0).toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
                 </table>
-            `;
-        }
+            </div>
+        ` : '<p class="mt-4">No trial entries available.</p>';
 
         logViewer.innerHTML = `
-            <h3 class="text-xl font-semibold text-slate-300 mb-4">Trial Details</h3>
-            <table>
-                <tr><th>Date/Time</th><th>Total Time (sec)</th><th>Interactions</th></tr>
-                <tr><td>${startTime}</td><td>${totalTime}</td><td>${trialInfo.total_interactions}</td></tr>
-            </table>
-            ${entriesHtml}
+            <div class="lg:col-span-2 bg-slate-900/50 p-6 rounded-lg border border-slate-700">
+                <h1 class="text-2xl font-bold text-white mb-4">Trial Summary</h1>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Pi ID</h3>
+                        <p class="text-white">${pi_id}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Status</h3>
+                        <p class="text-white">${status}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Start Time</h3>
+                        <p class="text-white">${new Date(start_time).toLocaleString()}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">End Time</h3>
+                        <p class="text-white">${new Date(end_time).toLocaleString()}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Duration</h3>
+                        <p class="text-white">${duration_display}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Total Interactions</h3>
+                        <p class="text-white">${total_interactions}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">Rewards</h3>
+                        <p class="text-white">${total_rewards}</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded border border-slate-700">
+                        <h3 class="text-slate-400 text-sm">No Reward</h3>
+                        <p class="text-white">${total_no_reward}</p>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-white mb-2">Counts by Type</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        ${countsByTypeHtml}
+                    </div>
+                </div>
+
+                ${entriesHtml}
+            </div>
         `;
     };
     
@@ -196,17 +263,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initial Load Logic ---
-    fetch('/current_user').then(res => res.json()).then(data => {
-        if (data.current_user) {
-            showRemoteLogs();
-        } else {
-            remoteLogBtn.style.display = 'none';
-            // Adjust grid to fill space if only one button
-            document.querySelector('.log-toggle-group').style.gridTemplateColumns = '1fr';
-            showLocalLogs();
-        }
-    }).catch(err => {
-        console.error("Error checking user status:", err);
-        showLocalLogs(); // Default to local logs on error
-    });
+    const initialLoad = () => {
+        fetch('/current_user').then(res => res.json()).then(data => {
+            if (data.current_user) {
+                showRemoteLogs();
+            } else {
+                remoteLogBtn.style.display = 'none';
+                document.querySelector('.log-toggle-group').style.gridTemplateColumns = '1fr';
+                showLocalLogs();
+            }
+
+            // If a log file is pre-selected (e.g., from a redirect),
+            // wait for the log list to populate, then click it.
+            if (typeof SELECTED_LOG_FILE !== 'undefined' && SELECTED_LOG_FILE) {
+                const observer = new MutationObserver((mutations, obs) => {
+                    const logItems = localLogsContainer.querySelectorAll('.log-item');
+                    for (let item of logItems) {
+                        if (item.textContent.includes(SELECTED_LOG_FILE) || item.dataset.filename === SELECTED_LOG_FILE) {
+                            item.click();
+                            obs.disconnect(); // Stop observing once found
+                            return;
+                        }
+                    }
+                });
+                observer.observe(localLogsContainer, { childList: true, subtree: true });
+            }
+        }).catch(err => {
+            console.error("Error checking user status:", err);
+            showLocalLogs(); // Default to local logs on error
+        });
+    };
+
+    initialLoad();
 });

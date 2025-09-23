@@ -7,11 +7,6 @@ SCRIPT_DIR="$(dirname "$0")"
 # Change to the script's directory, exit if failed
 cd "${SCRIPT_DIR}" || exit 1
 
-
-#!/bin/bash
-
-#!/bin/bash
-
 # ====================
 # Virtual Environment Activation Script
 # Purpose: Activates Python virtual environment with validation
