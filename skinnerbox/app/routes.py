@@ -28,8 +28,10 @@ settings_path = app_config.settings_path
 log_directory = app_config.log_directory
 trial_state_machine = TrialStateMachine()
 
-# Cloud Run URL
-CLOUD_RUN_URL = os.getenv('CLOUD_RUN_URL')
+# API Server URL (self-hosted)
+API_URL = os.getenv('API_URL') or os.getenv('CLOUD_RUN_URL')  # Fallback for backward compatibility
+if not API_URL:
+    raise ValueError("API_URL environment variable must be set")
 
 # Secure token and key file paths
 FERNET_KEY_FILE = "fernet_key.secure"
@@ -83,7 +85,7 @@ def reauth_if_needed(func):
 
         # Test the token by making a simple request
         headers = {"Authorization": f"Bearer {token_data}"}
-        test_response = requests.get(f"{CLOUD_RUN_URL}/test-auth", headers=headers)
+        test_response = requests.get(f"{API_URL}/test-auth", headers=headers)
 
         if test_response.status_code == 401:  # Token expired, attempt refresh
             print("Access token expired. Attempting reauthentication...")
@@ -94,7 +96,7 @@ def reauth_if_needed(func):
 
             # Send refresh token in Authorization header
             reauth_response = requests.post(
-                f"{CLOUD_RUN_URL}/refresh",
+                f"{API_URL}/refresh",
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {refresh_token}"  # ✅ Send refresh token in header
@@ -588,7 +590,7 @@ def push_log():
 
         # Send the request to the Cloud Run API
         headers = {'Authorization': f"Bearer {token_data}"}
-        response = requests.post(f'{CLOUD_RUN_URL}/trials/push', json=trial_data, headers=headers)
+        response = requests.post(f'{API_URL}/trials/push', json=trial_data, headers=headers)
 
         # Handle response
         if response.status_code in [200, 201]:
@@ -623,7 +625,7 @@ def pull_user_logs():
     headers = {'Authorization': f"Bearer {YOUR_ACCESS_TOKEN}"}
 
     try:
-        url = f'{CLOUD_RUN_URL}/trials/get'
+        url = f'{API_URL}/trials/get'
         params = {'name': username}
 
         response = requests.get(url, params=params, headers=headers)
@@ -687,7 +689,7 @@ def login_user():
 
     try:
         response = requests.post(
-            f'{CLOUD_RUN_URL}/login',
+            f'{API_URL}/login',
             json={'email': email, 'password': password},
             headers={'Content-Type': 'application/json'}
         )
@@ -766,7 +768,7 @@ def logout_user():
 #     try:
 #         response = requests.get(f'{CLOUD_RUN_URL}/users/get', params={'name': username})
 #         response.raise_for_status()
-#         print(f'Pulling user data from Cloud Run: {CLOUD_RUN_URL}')
+#         print(f'Pulling user data from API: {API_URL}')
 #         return response.json()
 #     except Exception as e:
 #         print(f'Error pulling user data from Cloud Run: {e}')
@@ -787,7 +789,7 @@ def Get_Protected_Data():
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         }
-        response = requests.get(f'{CLOUD_RUN_URL}/protected', headers=headers)
+        response = requests.get(f'{API_URL}/protected', headers=headers)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as http_err:

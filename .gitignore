@@ -91,8 +91,8 @@ target/
 .vscode/
 *.code-workspace
 
-# IDE
-.idea/
+# IDE/
+.idea
 *.swp
 *.swo
 *~
